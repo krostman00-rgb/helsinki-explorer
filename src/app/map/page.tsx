@@ -1,3 +1,5 @@
+"use client";
+
 import dynamic from "next/dynamic";
 
 // MapLibre GL uses browser APIs (window, WebGL) — must be loaded client-side only

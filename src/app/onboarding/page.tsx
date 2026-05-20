@@ -78,7 +78,7 @@ function StepDuration({ value, onChange, onNext }: { value: number; onChange: (n
     <OnbChrome step={1}>
       <div style={{ padding: "0 24px" }}>
         <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 02 · The shape of it</div>
-        <div style={{ fontFamily: "Instrument Serif, Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
+        <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
           How long are you<br/><span style={{ fontStyle: "italic" }}>here for?</span>
         </div>
         <p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.5, color: "var(--hh-ink-700)", maxWidth: 320 }}>
@@ -96,8 +96,8 @@ function StepDuration({ value, onChange, onNext }: { value: number; onChange: (n
               style={{ textAlign: "left", cursor: "pointer", padding: "16px 16px 14px", borderRadius: 18, background: active ? "var(--hh-ink-900)" : "var(--hh-linen-50)", border: active ? "1px solid var(--hh-ink-900)" : "0.5px solid var(--hh-linen-300)", color: active ? "var(--hh-linen-50)" : "var(--hh-ink-900)", position: "relative", minHeight: 110, display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: active ? "0 8px 22px rgba(26,22,17,0.18)" : "none", transition: "background 0.15s, color 0.15s" }}
             >
               <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ fontFamily: "Instrument Serif, Georgia, serif", fontSize: 44, lineHeight: 0.9, letterSpacing: "-0.04em" }}>{o.n}</span>
-                {o.n === 7 && <span style={{ fontFamily: "Instrument Serif, Georgia, serif", fontStyle: "italic", fontSize: 30, lineHeight: 0.9 }}>+</span>}
+                <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 44, lineHeight: 0.9, letterSpacing: "-0.04em" }}>{o.n}</span>
+                {o.n === 7 && <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontStyle: "italic", fontSize: 30, lineHeight: 0.9 }}>+</span>}
                 <span style={{ marginLeft: 4, fontFamily: "var(--font-geist-mono)", fontSize: 10.5, letterSpacing: "0.06em", opacity: 0.7, paddingBottom: 4 }}>{o.n === 1 ? "day" : "days"}</span>
               </div>
               <div>
@@ -133,7 +133,7 @@ function StepBudget({ value, onChange, onNext, onBack }: { value: number; onChan
     <OnbChrome step={2}>
       <div style={{ padding: "0 24px" }}>
         <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 03 · Money talk</div>
-        <div style={{ fontFamily: "Instrument Serif, Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
+        <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
           What&apos;s your <span style={{ fontStyle: "italic" }}>appetite?</span>
         </div>
         <p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.5, color: "var(--hh-ink-700)", maxWidth: 320 }}>
@@ -153,7 +153,7 @@ function StepBudget({ value, onChange, onNext, onBack }: { value: number; onChan
               {/* top row */}
               <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px" }}>
                 <div style={{ width: 54, height: 54, borderRadius: 12, background: active ? t.tint : "var(--hh-linen-200)", color: active ? "var(--hh-linen-50)" : t.tint, display: "grid", placeItems: "center", flex: "0 0 auto" }}>
-                  <span style={{ fontFamily: "Instrument Serif, Georgia, serif", fontSize: t.n === 3 ? 22 : 28, lineHeight: 0.85, letterSpacing: "-0.04em", fontStyle: t.n === 3 ? "italic" : "normal" }}>{t.mark}</span>
+                  <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: t.n === 3 ? 22 : 28, lineHeight: 0.85, letterSpacing: "-0.04em", fontStyle: t.n === 3 ? "italic" : "normal" }}>{t.mark}</span>
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 15.5, fontWeight: 500, lineHeight: 1.15 }}>{t.title}</div>
@@ -167,7 +167,7 @@ function StepBudget({ value, onChange, onNext, onBack }: { value: number; onChan
               {/* expanded content */}
               {active && (
                 <div style={{ padding: "4px 16px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ fontFamily: "Instrument Serif, Georgia, serif", fontSize: 18, lineHeight: 1.25, letterSpacing: "-0.01em", color: "var(--hh-linen-50)", fontStyle: "italic" }}>
+                  <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, lineHeight: 1.25, letterSpacing: "-0.01em", color: "var(--hh-linen-50)", fontStyle: "italic" }}>
                     &ldquo;{t.pitch}&rdquo;
                   </div>
                   <div style={{ borderTop: "0.5px solid rgba(250,247,241,0.18)", paddingTop: 10 }}>
@@ -226,7 +226,7 @@ function StepInterests({ value, onChange, onSubmit, isSubmitting, onBack }: { va
     <OnbChrome step={3}>
       <div style={{ padding: "0 24px" }}>
         <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 04 · Your hand</div>
-        <div style={{ fontFamily: "Instrument Serif, Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
+        <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
           What pulls you<br/><span style={{ fontStyle: "italic" }}>to a city?</span>
         </div>
         <p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.5, color: "var(--hh-ink-700)" }}>Pick at least two. The guide will thread them through your days.</p>

@@ -58,7 +58,7 @@ export default function WelcomePage() {
 
       {/* Serif headline — anchored low */}
       <div style={{ position: "absolute", left: 24, right: 24, bottom: 180, zIndex: 2, color: "#FAF7F1" }}>
-        <div style={{ fontFamily: "Instrument Serif, Georgia, serif", fontSize: 72, lineHeight: 0.94, letterSpacing: "-0.025em", fontWeight: 400 }}>
+        <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 72, lineHeight: 0.94, letterSpacing: "-0.025em", fontWeight: 400 }}>
           Hei,<br/>
           <span style={{ fontStyle: "italic" }}>Helsinki.</span>
         </div>

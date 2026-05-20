@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { BottomNav } from "@/components/BottomNav";
@@ -7,6 +7,14 @@ import { BottomNav } from "@/components/BottomNav";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+});
+
+// Editorial display font — used for headlines and serif moments
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -21,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f172a",
+  themeColor: "#F4EFE5",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -33,10 +41,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fi" className={`${geistSans.variable} h-full antialiased`}>
+    <html lang="fi" className={`${geistSans.variable} ${instrumentSerif.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <AuthProvider>
-          <main className="flex-1 pb-16">{children}</main>
+          <main className="flex-1 pb-[68px]">{children}</main>
           <BottomNav />
         </AuthProvider>
       </body>
