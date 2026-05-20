@@ -12,7 +12,11 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
-  // Images from external sources can be added here later
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "placehold.co" },
+    ],
+  },
 };
 
 export default withPWA(nextConfig);

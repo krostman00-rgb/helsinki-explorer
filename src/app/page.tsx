@@ -1,54 +1,91 @@
 import Link from "next/link";
 import Image from "next/image";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
-export default function HomePage() {
+// Arrow icon — matches HelloHel HhIcon.arrow (1.5px stroke)
+function ArrowIcon() {
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-4rem)]">
-      {/* Hero image — placeholder until real Helsinki photo is added */}
-      <div className="relative flex-1 min-h-[60vh]">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <path d="M3.5 9h11M10 4.5l4.5 4.5L10 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+// HelloHel wordmark — circle + dot + "hello·hel"
+function HhMark({ color = "currentColor" }: { color?: string }) {
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-geist-sans)", fontSize: 13, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color }}>
+      <svg width="13" height="13" viewBox="0 0 14 14" style={{ flex: "0 0 auto" }}>
+        <circle cx="7" cy="7" r="6.25" fill="none" stroke={color} strokeWidth="1.25"/>
+        <circle cx="7" cy="7" r="2" fill={color}/>
+      </svg>
+      <span>hello<span style={{ opacity: 0.55 }}>·</span>hel</span>
+    </div>
+  );
+}
+
+export default function WelcomePage() {
+  return (
+    <div style={{ width: "100%", height: "calc(100dvh - 0px)", position: "relative", overflow: "hidden", background: "#F4EFE5" }}>
+      {/* Full-bleed hero — Helsinki Cathedral alley, golden hour */}
+      <div style={{ position: "absolute", inset: 0 }}>
         <Image
-          src="https://placehold.co/800x600/0f172a/94a3b8?text=Helsinki"
-          alt="Helsinki skyline"
+          src="/assets/helsinki-cathedral-alley.jpg"
+          alt="Helsinki Cathedral golden hour"
           fill
           className="object-cover"
           priority
-          unoptimized
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        {/* bottom dark gradient — headline reads against it */}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,31,51,0) 0%, rgba(10,31,51,0) 40%, rgba(10,31,51,0.45) 72%, rgba(10,31,51,0.88) 100%)" }}/>
+        {/* top scrim — wordmark stays legible against bright sky */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 200, background: "linear-gradient(180deg, rgba(10,15,25,0.35) 0%, rgba(10,15,25,0) 100%)" }}/>
       </div>
 
-      {/* Content overlay */}
-      <div className="relative px-6 pb-8 -mt-32 flex flex-col gap-4">
-        <div className="space-y-2">
-          <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-            Tervetuloa
-          </p>
-          <h1 className="text-4xl font-bold leading-tight">
-            Helsinki
-            <br />
-            Explorer
-          </h1>
-          <p className="text-muted-foreground text-base leading-relaxed">
-            Löydä Helsingin parhaat paikat, luo oma matkaohjelmasi ja kerää
-            muistoja kaupunkiseikkailustasi.
-          </p>
+      {/* Top bar: wordmark + EN pill */}
+      <div style={{ position: "absolute", top: 64, left: 24, right: 24, zIndex: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <HhMark color="#FAF7F1"/>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(250,247,241,0.14)", border: "0.5px solid rgba(250,247,241,0.35)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", color: "#FAF7F1", fontSize: 11, letterSpacing: "0.04em" }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden><circle cx="7" cy="7" r="5.5" stroke="#FAF7F1" strokeWidth="1.2"/><path d="M1.5 7h11M7 1.5c1.7 2 1.7 9 0 11M7 1.5c-1.7 2-1.7 9 0 11" stroke="#FAF7F1" strokeWidth="1.2"/></svg>
+          <span>EN</span>
         </div>
+      </div>
 
+      {/* Editorial caption */}
+      <div style={{ position: "absolute", top: 120, left: 24, right: 24, zIndex: 2, color: "rgba(250,247,241,0.78)", fontFamily: "var(--font-geist-mono)", fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", display: "flex", justifyContent: "space-between" }}>
+        <span>N° 01 · A field guide</span>
+        <span>60.169° N</span>
+      </div>
+
+      {/* Serif headline — anchored low */}
+      <div style={{ position: "absolute", left: 24, right: 24, bottom: 180, zIndex: 2, color: "#FAF7F1" }}>
+        <div style={{ fontFamily: "Instrument Serif, Georgia, serif", fontSize: 72, lineHeight: 0.94, letterSpacing: "-0.025em", fontWeight: 400 }}>
+          Hei,<br/>
+          <span style={{ fontStyle: "italic" }}>Helsinki.</span>
+        </div>
+        <p style={{ marginTop: 18, fontSize: 15.5, lineHeight: 1.45, maxWidth: 300, color: "rgba(250,247,241,0.86)", fontWeight: 350 }}>
+          A city guide shaped to your days — saunas, sea, design and the in-between.
+        </p>
+      </div>
+
+      {/* Progress dots — 4 onboarding steps, first active */}
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 144, zIndex: 2, display: "flex", justifyContent: "center", gap: 6 }}>
+        {[0,1,2,3].map(i => (
+          <div key={i} style={{ width: i === 0 ? 22 : 6, height: 6, borderRadius: 999, background: i === 0 ? "#FAF7F1" : "rgba(250,247,241,0.35)" }}/>
+        ))}
+      </div>
+
+      {/* CTAs */}
+      <div style={{ position: "absolute", left: 20, right: 20, bottom: 56, zIndex: 2, display: "flex", flexDirection: "column", gap: 0 }}>
         <Link
           href="/onboarding"
-          className={cn(buttonVariants({ size: "lg" }), "w-full mt-2")}
+          style={{ width: "100%", height: 60, borderRadius: 28, border: "none", background: "var(--hh-copper-600)", color: "#FAF7F1", fontFamily: "var(--font-geist-sans)", fontSize: 16, fontWeight: 500, letterSpacing: "0.01em", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 8px 24px rgba(182,90,55,0.35), inset 0 1px 0 rgba(255,255,255,0.18)", textDecoration: "none" }}
         >
-          Aloita matkasi →
+          Start your guide <ArrowIcon/>
         </Link>
-
-        <Link
-          href="/trips"
-          className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "w-full")}
-        >
-          Minulla on jo matka
-        </Link>
+        <div style={{ marginTop: 16, textAlign: "center", color: "rgba(250,247,241,0.72)", fontSize: 13.5 }}>
+          Already have a passport?{" "}
+          <Link href="/trips" style={{ color: "#FAF7F1", textDecoration: "underline", textDecorationColor: "rgba(250,247,241,0.4)", textUnderlineOffset: 4 }}>Sign in</Link>
+        </div>
       </div>
     </div>
   );
