@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
+import { generateTripDays } from "@/lib/trip-generator";
 
 // ── Shared chrome ────────────────────────────────────────────
 function OnbChrome({ children, step, total = 3 }: { children: React.ReactNode; step: number; total?: number }) {
@@ -295,6 +296,9 @@ export default function OnboardingPage() {
       setIsSubmitting(false);
       return;
     }
+
+    // Generate day-by-day itinerary based on duration, budget and interests
+    await generateTripDays(supabase, data.id, durationDays, budgetLevel, interests);
 
     router.push(`/trips/${data.id}`);
   };
