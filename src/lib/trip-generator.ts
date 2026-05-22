@@ -66,7 +66,8 @@ export async function generateTripDays(
   tripId: string,
   durationDays: number,
   budgetLevel: number,
-  interests: string[]
+  interests: string[],
+  priorityPlaceIds: string[] = []
 ): Promise<void> {
   // 1. Fetch all Helsinki places
   const { data: allPlaces, error: placesError } = await supabase
@@ -99,10 +100,13 @@ export async function generateTripDays(
       continue;
     }
 
-    // 3. Score and rank places for this day
+    // 3. Score and rank places — user-picked places get a big priority boost
     const scored = eligible
-      .filter(p => !usedPlaceIds.has(p.id))   // don't repeat places
-      .map(p => ({ place: p, score: scorePlace(p, interests) }))
+      .filter(p => !usedPlaceIds.has(p.id))
+      .map(p => ({
+        place: p,
+        score: scorePlace(p, interests) + (priorityPlaceIds.includes(p.id) ? 100 : 0),
+      }))
       .sort((a, b) => b.score - a.score);
 
     const picked = scored.slice(0, activitiesPerDay).map(s => s.place);

@@ -135,6 +135,12 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-geist-sans), system-ui, sans-serif;
+    /* Prevent double-tap zoom on mobile without breaking touch events */
+    touch-action: manipulation;
+  }
+  /* Ensure tappable elements never accidentally lose pointer events */
+  button, a, [role="button"] {
+    touch-action: manipulation;
   }
 }
 
@@ -155,4 +161,21 @@
    Use font-serif class to get Instrument Serif. */
 .font-serif {
   font-family: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+}
+
+/* ── Sheet & toast animations ───────────────────────────────── */
+@keyframes hh-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.hh-sheet-enter {
+  animation: hh-slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+@keyframes hh-slide-down {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.hh-toast-enter {
+  animation: hh-slide-down 0.25s ease forwards;
 }

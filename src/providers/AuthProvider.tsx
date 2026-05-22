@@ -37,20 +37,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const supabase = createClient();
+    let settled = false;
 
-    // Check for existing session on mount
+    const settle = () => {
+      if (!settled) {
+        settled = true;
+        setIsLoading(false);
+      }
+    };
+
+    // Hard timeout: never stay in loading state more than 6 seconds
+    const timeout = setTimeout(settle, 6000);
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setSession(session);
         setUser(session.user);
-        setIsLoading(false);
+        settle();
       } else {
-        // No session found — create an anonymous one
-        signInAnonymously().finally(() => setIsLoading(false));
+        signInAnonymously().finally(settle);
       }
     });
 
-    // Listen for auth state changes (login, logout, token refresh)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -58,7 +66,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [signInAnonymously]);
 
   return (

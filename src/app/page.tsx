@@ -1,14 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-
-// Arrow icon — matches HelloHel HhIcon.arrow (1.5px stroke)
-function ArrowIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
-      <path d="M3.5 9h11M10 4.5l4.5 4.5L10 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
+import { ArrowRight } from "lucide-react";
 
 // HelloHel wordmark — circle + dot + "hello·hel"
 function HhMark({ color = "currentColor" }: { color?: string }) {
@@ -67,24 +59,17 @@ export default function WelcomePage() {
         </p>
       </div>
 
-      {/* Progress dots — 4 onboarding steps, first active */}
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 144, zIndex: 2, display: "flex", justifyContent: "center", gap: 6 }}>
-        {[0,1,2,3].map(i => (
-          <div key={i} style={{ width: i === 0 ? 22 : 6, height: 6, borderRadius: 999, background: i === 0 ? "#FAF7F1" : "rgba(250,247,241,0.35)" }}/>
-        ))}
-      </div>
-
       {/* CTAs */}
       <div style={{ position: "absolute", left: 20, right: 20, bottom: 56, zIndex: 2, display: "flex", flexDirection: "column", gap: 0 }}>
         <Link
           href="/onboarding"
           style={{ width: "100%", height: 60, borderRadius: 28, border: "none", background: "var(--hh-copper-600)", color: "#FAF7F1", fontFamily: "var(--font-geist-sans)", fontSize: 16, fontWeight: 500, letterSpacing: "0.01em", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 8px 24px rgba(182,90,55,0.35), inset 0 1px 0 rgba(255,255,255,0.18)", textDecoration: "none" }}
         >
-          Start your guide <ArrowIcon/>
+          Plan my Helsinki <ArrowRight size={18} strokeWidth={1.8}/>
         </Link>
         <div style={{ marginTop: 16, textAlign: "center", color: "rgba(250,247,241,0.72)", fontSize: 13.5 }}>
-          Already have a passport?{" "}
-          <Link href="/trips" style={{ color: "#FAF7F1", textDecoration: "underline", textDecorationColor: "rgba(250,247,241,0.4)", textUnderlineOffset: 4 }}>Sign in</Link>
+          Returning?{" "}
+          <Link href="/trips" style={{ color: "#FAF7F1", textDecoration: "underline", textDecorationColor: "rgba(250,247,241,0.4)", textUnderlineOffset: 4 }}>Open my trips</Link>
         </div>
       </div>
     </div>
