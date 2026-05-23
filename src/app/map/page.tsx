@@ -296,9 +296,8 @@ export default function MapPage() {
 
       {/* ── Bottom: selected place info card ── */}
       {selectedPlace && view === "map" && (
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20, padding: "0 16px 20px" }}>
-          <div style={{ height: 40, background: "linear-gradient(to top, rgba(237,232,220,0.5) 0%, transparent 100%)", pointerEvents: "none", marginBottom: -8 }}/>
-          <div style={{ background: "rgba(250,247,241,0.96)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 24, border: "0.5px solid rgba(180,165,145,0.3)", boxShadow: "0 8px 32px rgba(26,22,17,0.18)", padding: "18px 18px 20px", position: "relative" }}>
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20, padding: "0 16px 20px", background: "var(--hh-linen-100)", borderTop: "0.5px solid var(--hh-linen-300)" }}>
+          <div style={{ background: "var(--hh-linen-50)", borderRadius: 20, border: "0.5px solid var(--hh-linen-300)", boxShadow: "0 2px 12px rgba(26,22,17,0.08)", padding: "16px 16px 18px", position: "relative", marginTop: 12 }}>
             <button onClick={() => setSelectedPlace(null)} style={{ position: "absolute", top: 14, right: 14, width: 28, height: 28, borderRadius: 999, background: "var(--hh-linen-200)", border: "none", display: "grid", placeItems: "center", cursor: "pointer" }}>
               <X size={13} color="var(--hh-stone-500)" strokeWidth={2}/>
             </button>
@@ -339,8 +338,7 @@ export default function MapPage() {
 
       {/* ── Bottom: trip activity cards ── */}
       {!selectedPlace && trip && view === "map" && (
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20, paddingBottom: 20 }}>
-          <div style={{ height: 56, background: "linear-gradient(to top, rgba(237,232,220,0.6) 0%, transparent 100%)", pointerEvents: "none" }}/>
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20, background: "var(--hh-linen-100)", borderTop: "0.5px solid var(--hh-linen-300)", paddingTop: 12, paddingBottom: 20 }}>
           <div ref={cardsRef} style={{ display: "flex", gap: 10, overflowX: "auto", padding: "0 20px", scrollbarWidth: "none", scrollSnapType: "x mandatory" }}>
             {validActivities.map((act, i) => {
               const cat   = act.places?.category ?? "";
@@ -348,7 +346,7 @@ export default function MapPage() {
               const color = CATEGORY_COLOR[cat] ?? "#B5A992";
               const active = i === selectedIdx;
               return (
-                <button key={act.id} onClick={() => setSelectedIdx(i)} style={{ flex: "0 0 auto", width: 200, minWidth: 200, padding: "14px 16px", borderRadius: 20, background: active ? "var(--hh-ink-900)" : "rgba(250,247,241,0.94)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", border: `0.5px solid ${active ? "transparent" : "rgba(180,165,145,0.3)"}`, boxShadow: active ? "0 4px 20px rgba(26,22,17,0.30)" : "0 2px 12px rgba(26,22,17,0.10)", cursor: "pointer", textAlign: "left", scrollSnapAlign: "center", transition: "background 0.2s" }}>
+                <button key={act.id} onClick={() => setSelectedIdx(i)} style={{ flex: "0 0 auto", width: 200, minWidth: 200, padding: "14px 16px", borderRadius: 16, background: active ? "var(--hh-ink-900)" : "var(--hh-linen-50)", border: `0.5px solid ${active ? "transparent" : "var(--hh-linen-300)"}`, boxShadow: active ? "0 2px 12px rgba(26,22,17,0.20)" : "none", cursor: "pointer", textAlign: "left", scrollSnapAlign: "center", transition: "background 0.2s" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                     <div style={{ width: 32, height: 32, borderRadius: 9, background: active ? "rgba(250,247,241,0.10)" : "var(--hh-linen-200)", display: "grid", placeItems: "center" }}>
                       <Icon size={14} color={active ? "#FAF7F1" : color} strokeWidth={1.6}/>

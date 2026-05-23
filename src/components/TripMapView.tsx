@@ -143,8 +143,8 @@ export function TripMapView({
         },
         layers: [{ id: "bg", type: "raster", source: "carto" }],
       },
-      center: [24.9354, 60.1699],
-      zoom: 12.5,
+      center: [24.9354, 60.1650],
+      zoom: 11.5,
       attributionControl: false,
     });
     mapRef.current.addControl(
