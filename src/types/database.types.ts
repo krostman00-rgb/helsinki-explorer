@@ -12,8 +12,8 @@ export interface Database {
       profiles: {
         Row: {
           id: string;
+          user_id: string;
           created_at: string;
-          updated_at: string;
           display_name: string | null;
           avatar_url: string | null;
           total_points: number;
@@ -21,9 +21,9 @@ export interface Database {
           is_anonymous: boolean;
         };
         Insert: {
-          id: string;
+          id?: string;
+          user_id: string;
           created_at?: string;
-          updated_at?: string;
           display_name?: string | null;
           avatar_url?: string | null;
           total_points?: number;
@@ -32,8 +32,8 @@ export interface Database {
         };
         Update: {
           id?: string;
+          user_id?: string;
           created_at?: string;
-          updated_at?: string;
           display_name?: string | null;
           avatar_url?: string | null;
           total_points?: number;
@@ -105,7 +105,6 @@ export interface Database {
         Row: {
           id: string;
           created_at: string;
-          updated_at: string;
           user_id: string;
           title: string;
           duration_days: number;
@@ -117,7 +116,6 @@ export interface Database {
         Insert: {
           id?: string;
           created_at?: string;
-          updated_at?: string;
           user_id: string;
           title?: string;
           duration_days: number;
@@ -129,7 +127,6 @@ export interface Database {
         Update: {
           id?: string;
           created_at?: string;
-          updated_at?: string;
           user_id?: string;
           title?: string;
           duration_days?: number;

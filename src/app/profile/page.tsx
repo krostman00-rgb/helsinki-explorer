@@ -28,7 +28,7 @@ export default function ProfilePage() {
     if (!user) return;
     const supabase = createClient();
     Promise.all([
-      supabase.from("profiles").select("total_points, level").eq("id", user.id).single(),
+      supabase.from("profiles").select("total_points, level").eq("user_id", user.id).single(),
       supabase.from("trips").select("id", { count: "exact", head: true }).eq("user_id", user.id),
     ]).then(([profileRes, tripsRes]) => {
       setStats({
