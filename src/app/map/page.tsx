@@ -1,14 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   Search, List, Map as MapIcon,
   Coffee, Utensils, Flame, Landmark, TreePine, Building2, Gem, Moon, ShoppingBag, Users, History, CalendarDays,
   Star, MapPin, X, CheckCircle2,
 } from "lucide-react";
 import { markActivityDone } from "@/lib/gamification";
-import { useMemo } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
 import type { Trip, TripDay, TripActivity, Place } from "@/types/database.types";
@@ -63,6 +62,57 @@ interface DayWithActivities extends TripDay {
 
 function pad2(n: number) { return String(n).padStart(2, "0"); }
 
+// ── Transit types & helpers ────────────────────────────────────
+interface TransitLeg { mode: string; durationMin: number; line: string | null }
+interface TransitResult { totalMin: number; legs: TransitLeg[] }
+
+const MODE_ICON: Record<string, string> = {
+  TRAM: "🚊", BUS: "🚌", SUBWAY: "🚇", FERRY: "⛴", RAIL: "🚆", WALK: "🚶",
+};
+
+async function fetchTransitLeg(
+  fromLat: number, fromLng: number,
+  toLat: number,   toLng: number,
+): Promise<TransitResult | null> {
+  try {
+    const p = new URLSearchParams({
+      fromLat: String(fromLat), fromLng: String(fromLng),
+      toLat:   String(toLat),   toLng:   String(toLng),
+    });
+    const res = await fetch(`/api/route-between?${p}`);
+    if (!res.ok) return null;
+    return await res.json() as TransitResult;
+  } catch { return null; }
+}
+
+function TransitConnector({ transit, loading }: { transit: TransitResult | null; loading: boolean }) {
+  if (loading) {
+    return (
+      <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", width: 48 }}>
+        <div style={{ width: 4, height: 4, borderRadius: "50%", background: "rgba(26,22,17,0.2)", animation: "pulse 1.2s ease infinite" }}/>
+      </div>
+    );
+  }
+  if (!transit) return <div style={{ flex: "0 0 8px" }}/>;
+
+  const primary = transit.legs.find(l => l.mode !== "WALK") ?? transit.legs[0];
+  const icon    = MODE_ICON[primary?.mode ?? "WALK"] ?? "→";
+
+  return (
+    <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: "0 2px", minWidth: 52 }}>
+      <span style={{ fontSize: 15 }}>{icon}</span>
+      {primary?.line && (
+        <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, fontWeight: 700, color: "rgba(26,22,17,0.7)", background: "rgba(26,22,17,0.08)", padding: "1px 5px", borderRadius: 4, letterSpacing: "0.04em" }}>
+          {primary.line}
+        </span>
+      )}
+      <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: "rgba(26,22,17,0.4)", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
+        {transit.totalMin} min
+      </span>
+    </div>
+  );
+}
+
 export default function MapPage() {
   const { user, isLoading: authLoading } = useAuth();
 
@@ -77,8 +127,11 @@ export default function MapPage() {
   const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null);
   const [filterCat, setFilterCat]         = useState("all");
   const [toast, setToast]                 = useState<string | null>(null);
+  const [transitLegs, setTransitLegs]     = useState<(TransitResult | null)[]>([]);
+  const [transitLoading, setTransitLoading] = useState(false);
 
-  const cardsRef = useRef<HTMLDivElement>(null);
+  const cardsRef  = useRef<HTMLDivElement>(null);
+  const cardElsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
     const sb = createClient();
@@ -118,10 +171,7 @@ export default function MapPage() {
   }, [user, authLoading]);
 
   useEffect(() => {
-    const container = cardsRef.current;
-    if (!container) return;
-    const card = container.children[selectedIdx] as HTMLElement | undefined;
-    if (card) card.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    cardElsRef.current[selectedIdx]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }, [selectedIdx]);
 
   const currentDay = days[dayIdx];
@@ -138,6 +188,25 @@ export default function MapPage() {
     () => filterCat === "all" ? allPlaces : allPlaces.filter(p => p.category === filterCat),
     [allPlaces, filterCat]
   );
+
+  // Key that changes when the activity list or coordinates change
+  const activitiesKey = useMemo(
+    () => validActivities.map(a => `${a.id}:${a.places?.lat},${a.places?.lng}`).join("|"),
+    [validActivities]
+  );
+
+  useEffect(() => {
+    if (validActivities.length < 2) { setTransitLegs([]); return; }
+    setTransitLoading(true);
+    const pairs = validActivities.slice(0, -1).map((a, i) => ({
+      fromLat: a.places!.lat, fromLng: a.places!.lng,
+      toLat:   validActivities[i + 1].places!.lat,
+      toLng:   validActivities[i + 1].places!.lng,
+    }));
+    Promise.all(pairs.map(p => fetchTransitLeg(p.fromLat, p.fromLng, p.toLat, p.toLng)))
+      .then(results => { setTransitLegs(results); setTransitLoading(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activitiesKey]);
 
   const handleMarkerClick = useCallback((idx: number) => {
     setSelectedIdx(idx);
@@ -372,41 +441,54 @@ export default function MapPage() {
       {/* ── Bottom: trip activity cards ── */}
       {!selectedPlace && trip && view === "map" && (
         <div style={{ position: "absolute", bottom: 20, left: 0, right: 0, zIndex: 20 }}>
-          <div ref={cardsRef} style={{ display: "flex", gap: 10, overflowX: "auto", padding: "0 20px", scrollbarWidth: "none", scrollSnapType: "x mandatory" }}>
+          <div ref={cardsRef} style={{ display: "flex", alignItems: "center", gap: 0, overflowX: "auto", padding: "0 20px", scrollbarWidth: "none", scrollSnapType: "x mandatory" }}>
             {validActivities.map((act, i) => {
               const cat   = act.places?.category ?? "";
               const Icon  = CATEGORY_ICON[cat] ?? Gem;
               const color = CATEGORY_COLOR[cat] ?? "#B5A992";
               const active = i === selectedIdx;
               return (
-                <button key={act.id} onClick={() => setSelectedIdx(i)} style={{ flex: "0 0 auto", width: 200, minWidth: 200, padding: "14px 16px", borderRadius: 16, background: active ? "var(--hh-ink-900)" : act.completed ? "rgba(63,90,69,0.08)" : "var(--hh-linen-50)", border: `0.5px solid ${active ? "transparent" : act.completed ? "rgba(63,90,69,0.25)" : "var(--hh-linen-300)"}`, boxShadow: active ? "0 2px 12px rgba(26,22,17,0.20)" : "none", cursor: "pointer", textAlign: "left", scrollSnapAlign: "center", transition: "background 0.2s" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 9, background: active ? "rgba(250,247,241,0.10)" : "var(--hh-linen-200)", display: "grid", placeItems: "center" }}>
-                      <Icon size={14} color={active ? "#FAF7F1" : color} strokeWidth={1.6}/>
+                <div key={act.id} style={{ display: "flex", alignItems: "center", flex: "0 0 auto" }}>
+                  <button
+                    ref={el => { cardElsRef.current[i] = el; }}
+                    onClick={() => setSelectedIdx(i)}
+                    style={{ flex: "0 0 auto", width: 200, minWidth: 200, padding: "14px 16px", borderRadius: 16, background: active ? "var(--hh-ink-900)" : act.completed ? "rgba(63,90,69,0.08)" : "var(--hh-linen-50)", border: `0.5px solid ${active ? "transparent" : act.completed ? "rgba(63,90,69,0.25)" : "var(--hh-linen-300)"}`, boxShadow: active ? "0 2px 12px rgba(26,22,17,0.20)" : "none", cursor: "pointer", textAlign: "left", scrollSnapAlign: "center", transition: "background 0.2s" }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 9, background: active ? "rgba(250,247,241,0.10)" : "var(--hh-linen-200)", display: "grid", placeItems: "center" }}>
+                        <Icon size={14} color={active ? "#FAF7F1" : color} strokeWidth={1.6}/>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {act.completed
+                          ? <CheckCircle2 size={14} color={active ? "rgba(250,247,241,0.6)" : "#3F5A45"} strokeWidth={2}/>
+                          : (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleMarkDone(act); }}
+                              style={{ width: 26, height: 26, borderRadius: 999, border: `1.5px solid ${active ? "rgba(250,247,241,0.25)" : "var(--hh-linen-300)"}`, background: "transparent", display: "grid", placeItems: "center", cursor: "pointer" }}
+                            >
+                              <CheckCircle2 size={12} color={active ? "rgba(250,247,241,0.4)" : "var(--hh-stone-400)"} strokeWidth={1.8}/>
+                            </button>
+                          )
+                        }
+                      </div>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {act.completed
-                        ? <CheckCircle2 size={14} color={active ? "rgba(250,247,241,0.6)" : "#3F5A45"} strokeWidth={2}/>
-                        : (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleMarkDone(act); }}
-                            style={{ width: 26, height: 26, borderRadius: 999, border: `1.5px solid ${active ? "rgba(250,247,241,0.25)" : "var(--hh-linen-300)"}`, background: "transparent", display: "grid", placeItems: "center", cursor: "pointer" }}
-                          >
-                            <CheckCircle2 size={12} color={active ? "rgba(250,247,241,0.4)" : "var(--hh-stone-400)"} strokeWidth={1.8}/>
-                          </button>
-                        )
-                      }
-                    </div>
-                  </div>
-                  <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 16, lineHeight: 1.15, color: active ? "#FAF7F1" : "var(--hh-ink-900)", marginBottom: 4, letterSpacing: "-0.01em" }}>{act.places?.name ?? "—"}</div>
-                  <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: active ? "rgba(250,247,241,0.45)" : "var(--hh-stone-400)", letterSpacing: "0.1em", textTransform: "uppercase" }}>{cat}</div>
-                </button>
+                    <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 16, lineHeight: 1.15, color: active ? "#FAF7F1" : "var(--hh-ink-900)", marginBottom: 4, letterSpacing: "-0.01em" }}>{act.places?.name ?? "—"}</div>
+                    <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: active ? "rgba(250,247,241,0.45)" : "var(--hh-stone-400)", letterSpacing: "0.1em", textTransform: "uppercase" }}>{cat}</div>
+                  </button>
+                  {/* Transit connector to next stop */}
+                  {i < validActivities.length - 1 && (
+                    <TransitConnector
+                      transit={transitLegs[i] ?? null}
+                      loading={transitLoading && !transitLegs[i]}
+                    />
+                  )}
+                </div>
               );
             })}
             {validActivities.length === 0 && (
               <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "rgba(26,22,17,0.4)", padding: "16px 4px" }}>No stops on this day.</div>
             )}
-            <div style={{ flex: "0 0 8px" }}/>
+            <div style={{ flex: "0 0 20px" }}/>
           </div>
         </div>
       )}
