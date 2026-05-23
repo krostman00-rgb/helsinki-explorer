@@ -14,24 +14,28 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
+  authError: string | null;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   session: null,
   isLoading: true,
+  authError: null,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const signInAnonymously = useCallback(async () => {
     const supabase = createClient();
     const { data, error } = await supabase.auth.signInAnonymously();
     if (error) {
       console.error("Anonymous sign-in failed:", error.message);
+      setAuthError(error.message);
     } else if (data.session) {
       setSession(data.session);
       setUser(data.session.user);
@@ -76,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [signInAnonymously]);
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading }}>
+    <AuthContext.Provider value={{ user, session, isLoading, authError }}>
       {children}
     </AuthContext.Provider>
   );

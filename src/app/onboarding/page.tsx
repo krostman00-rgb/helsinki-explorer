@@ -587,7 +587,7 @@ function StepInterests({ value, onChange, onNext, isSubmitting, onBack }: { valu
 // ── Main page ────────────────────────────────────────────────
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, authError } = useAuth();
 
   const [step, setStep]                   = useState(1);
   const [durationDays, setDurationDays]   = useState(3);
@@ -601,7 +601,7 @@ export default function OnboardingPage() {
     console.log("[handleSubmit] user:", user?.id ?? "NULL", "isSubmitting:", isSubmitting);
     if (isSubmitting) return;
     if (!user) {
-      setSubmitError("Kirjautuminen ei onnistunut. Lataa sivu uudelleen.");
+      setSubmitError(`Kirjautuminen ei onnistunut${authError ? `: ${authError}` : ""}. Lataa sivu uudelleen.`);
       return;
     }
     setIsSubmitting(true);
