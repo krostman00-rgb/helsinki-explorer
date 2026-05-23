@@ -5,8 +5,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Search, List, Map as MapIcon,
   Coffee, Utensils, Flame, Landmark, TreePine, Building2, Gem, Moon, ShoppingBag, Users, History, CalendarDays,
-  Star, MapPin, X,
+  Star, MapPin, X, CheckCircle2,
 } from "lucide-react";
+import { markActivityDone } from "@/lib/gamification";
 import { useMemo } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
@@ -54,7 +55,7 @@ const FILTER_CATEGORIES = [
 ];
 
 interface ActivityWithPlace extends TripActivity {
-  places: Pick<Place, "name" | "category" | "lat" | "lng"> | null;
+  places: Pick<Place, "name" | "category" | "lat" | "lng" | "tags"> | null;
 }
 interface DayWithActivities extends TripDay {
   trip_activities: ActivityWithPlace[];
@@ -75,6 +76,7 @@ export default function MapPage() {
   const [allPlaces, setAllPlaces]         = useState<MapPlace[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null);
   const [filterCat, setFilterCat]         = useState("all");
+  const [toast, setToast]                 = useState<string | null>(null);
 
   const cardsRef = useRef<HTMLDivElement>(null);
 
@@ -107,7 +109,7 @@ export default function MapPage() {
 
       const { data: daysData } = await sb
         .from("trip_days")
-        .select("*, trip_activities(*, places(name, category, lat, lng))")
+        .select("*, trip_activities(*, places(name, category, lat, lng, tags))")
         .eq("trip_id", tripData.id)
         .order("day_number", { ascending: true });
       setDays((daysData as unknown as DayWithActivities[]) ?? []);
@@ -147,6 +149,30 @@ export default function MapPage() {
     setSelectedIdx(-1);
   }, []);
 
+  const handleMarkDone = useCallback(async (act: ActivityWithPlace) => {
+    if (!user || !trip || act.completed) return;
+    const result = await markActivityDone(
+      user.id,
+      act.id,
+      act.places?.name ?? "",
+      act.places?.category ?? "",
+      act.places?.tags ?? [],
+      trip.id,
+    );
+    // Update local state optimistically
+    setDays(prev => prev.map(d => ({
+      ...d,
+      trip_activities: d.trip_activities.map(a =>
+        a.id === act.id ? { ...a, completed: true } : a
+      ),
+    })));
+    const msg = result.newAchievements.length > 0
+      ? `+${result.pointsEarned} pts · ${result.newAchievements[0].icon} ${result.newAchievements[0].title} unlocked!`
+      : `+${result.pointsEarned} pts`;
+    setToast(msg);
+    setTimeout(() => setToast(null), 3200);
+  }, [user, trip]);
+
   if (isLoading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "calc(100dvh - 68px)", background: "#EDE8DC" }}>
@@ -163,6 +189,13 @@ export default function MapPage() {
 
   return (
     <div style={{ position: "relative", width: "100%", height: "calc(100dvh - 68px)", overflow: "hidden" }}>
+
+      {/* ── Toast notification ── */}
+      {toast && (
+        <div style={{ position: "absolute", top: 72, left: "50%", transform: "translateX(-50%)", zIndex: 100, whiteSpace: "nowrap", background: "var(--hh-ink-900)", color: "#FAF7F1", fontFamily: "var(--font-geist-mono)", fontSize: 11, letterSpacing: "0.08em", padding: "10px 18px", borderRadius: 999, boxShadow: "0 4px 20px rgba(26,22,17,0.25)", pointerEvents: "none", animation: "fadeIn 0.2s ease" }}>
+          {toast}
+        </div>
+      )}
 
       {/* ── Full-screen map ── */}
       {view === "map" && (
@@ -346,12 +379,24 @@ export default function MapPage() {
               const color = CATEGORY_COLOR[cat] ?? "#B5A992";
               const active = i === selectedIdx;
               return (
-                <button key={act.id} onClick={() => setSelectedIdx(i)} style={{ flex: "0 0 auto", width: 200, minWidth: 200, padding: "14px 16px", borderRadius: 16, background: active ? "var(--hh-ink-900)" : "var(--hh-linen-50)", border: `0.5px solid ${active ? "transparent" : "var(--hh-linen-300)"}`, boxShadow: active ? "0 2px 12px rgba(26,22,17,0.20)" : "none", cursor: "pointer", textAlign: "left", scrollSnapAlign: "center", transition: "background 0.2s" }}>
+                <button key={act.id} onClick={() => setSelectedIdx(i)} style={{ flex: "0 0 auto", width: 200, minWidth: 200, padding: "14px 16px", borderRadius: 16, background: active ? "var(--hh-ink-900)" : act.completed ? "rgba(63,90,69,0.08)" : "var(--hh-linen-50)", border: `0.5px solid ${active ? "transparent" : act.completed ? "rgba(63,90,69,0.25)" : "var(--hh-linen-300)"}`, boxShadow: active ? "0 2px 12px rgba(26,22,17,0.20)" : "none", cursor: "pointer", textAlign: "left", scrollSnapAlign: "center", transition: "background 0.2s" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                     <div style={{ width: 32, height: 32, borderRadius: 9, background: active ? "rgba(250,247,241,0.10)" : "var(--hh-linen-200)", display: "grid", placeItems: "center" }}>
                       <Icon size={14} color={active ? "#FAF7F1" : color} strokeWidth={1.6}/>
                     </div>
-                    <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, fontWeight: 700, color: active ? "rgba(250,247,241,0.35)" : "var(--hh-stone-300)", letterSpacing: "0.06em" }}>{pad2(i + 1)}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {act.completed
+                        ? <CheckCircle2 size={14} color={active ? "rgba(250,247,241,0.6)" : "#3F5A45"} strokeWidth={2}/>
+                        : (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleMarkDone(act); }}
+                            style={{ width: 26, height: 26, borderRadius: 999, border: `1.5px solid ${active ? "rgba(250,247,241,0.25)" : "var(--hh-linen-300)"}`, background: "transparent", display: "grid", placeItems: "center", cursor: "pointer" }}
+                          >
+                            <CheckCircle2 size={12} color={active ? "rgba(250,247,241,0.4)" : "var(--hh-stone-400)"} strokeWidth={1.8}/>
+                          </button>
+                        )
+                      }
+                    </div>
                   </div>
                   <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 16, lineHeight: 1.15, color: active ? "#FAF7F1" : "var(--hh-ink-900)", marginBottom: 4, letterSpacing: "-0.01em" }}>{act.places?.name ?? "—"}</div>
                   <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: active ? "rgba(250,247,241,0.45)" : "var(--hh-stone-400)", letterSpacing: "0.1em", textTransform: "uppercase" }}>{cat}</div>
