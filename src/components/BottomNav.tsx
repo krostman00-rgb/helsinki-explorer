@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Hide the nav on fullscreen editorial screens
 const HIDDEN_ON = ["/", "/onboarding"];
 
 const NAV_ITEMS = [
@@ -19,11 +18,11 @@ const NAV_ITEMS = [
   },
   {
     href: "/trips",
-    label: "Trips",
+    label: "List",
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <path d="M7 3h8a1 1 0 011 1v14a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1zM9 7h4M9 11h4M9 15h2"
-          stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M4 6h14M4 11h14M4 16h8"
+          stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round"/>
       </svg>
     ),
   },
@@ -48,6 +47,17 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: "/me",
+    label: "Me",
+    icon: (active: boolean) => (
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <circle cx="11" cy="8" r="3.5" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
+        <path d="M3.5 19c0-3.5 3.4-6.5 7.5-6.5s7.5 3 7.5 6.5"
+          stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round"/>
+      </svg>
+    ),
+  },
 ] as const;
 
 export function BottomNav() {
@@ -56,7 +66,12 @@ export function BottomNav() {
   if (HIDDEN_ON.includes(pathname)) return null;
 
   return (
-    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, background: "var(--hh-linen-50)", borderTop: "0.5px solid var(--hh-linen-300)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
+    <nav style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
+      background: "rgba(250,247,241,0.95)",
+      borderTop: "0.5px solid rgba(180,165,145,0.3)",
+      backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+    }}>
       <ul style={{ display: "flex", height: 68, alignItems: "stretch", margin: 0, padding: 0, listStyle: "none" }}>
         {NAV_ITEMS.map(({ href, label, icon }) => {
           const isActive = pathname === href || (href !== "/" && pathname.startsWith(href));
@@ -64,10 +79,15 @@ export function BottomNav() {
             <li key={label} style={{ flex: 1, display: "flex" }}>
               <Link
                 href={href}
-                style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, textDecoration: "none", color: isActive ? "var(--hh-ink-900)" : "var(--hh-stone-500)", transition: "color 0.15s" }}
+                style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, textDecoration: "none", color: isActive ? "var(--hh-ink-900)" : "var(--hh-stone-500)", transition: "color 0.15s", position: "relative" }}
               >
                 {icon(isActive)}
-                <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 10, fontWeight: isActive ? 500 : 400, letterSpacing: "0.04em" }}>{label}</span>
+                <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 10, fontWeight: isActive ? 500 : 400, letterSpacing: "0.04em" }}>
+                  {label}
+                </span>
+                {isActive && (
+                  <span style={{ position: "absolute", bottom: 6, width: 4, height: 4, borderRadius: "50%", background: "#C96E48" }}/>
+                )}
               </Link>
             </li>
           );
