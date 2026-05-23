@@ -598,7 +598,12 @@ export default function OnboardingPage() {
   const [submitError, setSubmitError]     = useState<string | null>(null);
 
   const handleSubmit = async (finalPickedIds: string[]) => {
-    if (!user || isSubmitting) return;
+    console.log("[handleSubmit] user:", user?.id ?? "NULL", "isSubmitting:", isSubmitting);
+    if (isSubmitting) return;
+    if (!user) {
+      setSubmitError("Kirjautuminen ei onnistunut. Lataa sivu uudelleen.");
+      return;
+    }
     setIsSubmitting(true);
     setSubmitError(null);
 
