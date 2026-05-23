@@ -7,6 +7,7 @@ import {
   Coffee, Utensils, Flame, Landmark, TreePine, Building2, Gem, Moon, ShoppingBag, Users, History, CalendarDays,
   Star, MapPin, X,
 } from "lucide-react";
+import { useMemo } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
 import type { Trip, TripDay, TripActivity, Place } from "@/types/database.types";
@@ -131,9 +132,10 @@ export default function MapPage() {
     places: a.places ? { category: a.places.category, lat: a.places.lat, lng: a.places.lng } : null,
   }));
 
-  const filteredPlaces = filterCat === "all"
-    ? allPlaces
-    : allPlaces.filter(p => p.category === filterCat);
+  const filteredPlaces = useMemo(
+    () => filterCat === "all" ? allPlaces : allPlaces.filter(p => p.category === filterCat),
+    [allPlaces, filterCat]
+  );
 
   const handleMarkerClick = useCallback((idx: number) => {
     setSelectedIdx(idx);

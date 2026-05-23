@@ -169,7 +169,7 @@ export function TripMapView({
       allPlaces.forEach(place => {
         const isSelected = place.id === selectedPlaceId;
         const el = makePlaceMarkerEl(place.category, isSelected, () => onPlaceClick?.(place));
-        const m = new maplibregl.Marker({ element: el, anchor: "center", offset: [0, 4] })
+        const m = new maplibregl.Marker({ element: el, anchor: "bottom" })
           .setLngLat([place.lng, place.lat])
           .addTo(map);
         placeMarkersRef.current.push(m);
@@ -219,7 +219,7 @@ export function TripMapView({
           i === selectedIdx,
           () => onMarkerClick(i),
         );
-        const m = new maplibregl.Marker({ element: el, anchor: "center", offset: [0, 5] })
+        const m = new maplibregl.Marker({ element: el, anchor: "bottom" })
           .setLngLat([act.places!.lng, act.places!.lat])
           .addTo(map);
         tripMarkersRef.current.push(m);
