@@ -312,12 +312,14 @@ const CATEGORY_LABEL_UPPER: Record<string, string> = {
 };
 
 function StepDiscover({
-  budgetLevel, interests, onNext, onBack,
+  budgetLevel, interests, onNext, onBack, isSubmitting, errorMessage,
 }: {
   budgetLevel: number;
   interests: string[];
   onNext: (pickedIds: string[]) => void;
   onBack: () => void;
+  isSubmitting: boolean;
+  errorMessage?: string | null;
 }) {
   const [deck, setDeck]       = useState<Place[]>([]);
   const [idx, setIdx]         = useState(0);
@@ -486,9 +488,19 @@ function StepDiscover({
         </button>
       </div>
 
+      {errorMessage && (
+        <div style={{ position: "relative", zIndex: 1, marginTop: 10, padding: "10px 16px", borderRadius: 12, background: "rgba(182,90,55,0.12)", border: "0.5px solid var(--hh-copper-600)", fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "var(--hh-copper-600)", textAlign: "center" }}>
+          {errorMessage}
+        </div>
+      )}
+
       {/* skip all */}
-      <button onClick={() => onNext(picked)} style={{ position: "relative", zIndex: 1, marginTop: 14, background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "var(--hh-stone-400)", textDecoration: "underline", textDecorationColor: "var(--hh-linen-300)" }}>
-        Continue with {picked.length} pick{picked.length !== 1 ? "s" : ""} →
+      <button
+        onClick={() => { if (!isSubmitting) onNext(picked); }}
+        disabled={isSubmitting}
+        style={{ position: "relative", zIndex: 1, marginTop: 14, background: "none", border: "none", cursor: isSubmitting ? "default" : "pointer", fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "var(--hh-stone-400)", textDecoration: "underline", textDecorationColor: "var(--hh-linen-300)", opacity: isSubmitting ? 0.5 : 1 }}
+      >
+        {isSubmitting ? "Building your trip…" : `Continue with ${picked.length} pick${picked.length !== 1 ? "s" : ""} →`}
       </button>
     </div>
   );
@@ -583,10 +595,12 @@ export default function OnboardingPage() {
   const [pickedPlaceIds, setPickedIds]    = useState<string[]>([]);
   const [interests, setInterests]         = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting]   = useState(false);
+  const [submitError, setSubmitError]     = useState<string | null>(null);
 
   const handleSubmit = async (finalPickedIds: string[]) => {
-    if (!user) return;
+    if (!user || isSubmitting) return;
     setIsSubmitting(true);
+    setSubmitError(null);
 
     const supabase = createClient();
     const { data, error } = await supabase
@@ -604,6 +618,7 @@ export default function OnboardingPage() {
 
     if (error) {
       console.error("Failed to create trip:", error.message);
+      setSubmitError("Matkan luonti epäonnistui. Yritä uudelleen.");
       setIsSubmitting(false);
       return;
     }
@@ -615,5 +630,5 @@ export default function OnboardingPage() {
   if (step === 1) return <StepDuration value={durationDays} onChange={setDurationDays} onNext={() => setStep(2)} onBack={() => router.push("/")}/>;
   if (step === 2) return <StepBudget value={budgetLevel} onChange={setBudgetLevel} onNext={() => setStep(3)} onBack={() => setStep(1)}/>;
   if (step === 3) return <StepInterests value={interests} onChange={setInterests} onNext={() => setStep(4)} isSubmitting={isSubmitting} onBack={() => setStep(2)}/>;
-  return <StepDiscover budgetLevel={budgetLevel} interests={interests} onNext={ids => { setPickedIds(ids); handleSubmit(ids); }} onBack={() => setStep(3)}/>;
+  return <StepDiscover budgetLevel={budgetLevel} interests={interests} onNext={ids => { setPickedIds(ids); handleSubmit(ids); }} onBack={() => setStep(3)} isSubmitting={isSubmitting} errorMessage={submitError}/>;
 }
