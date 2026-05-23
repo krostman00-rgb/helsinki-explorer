@@ -44,64 +44,89 @@ export interface MapPlace {
   price_level?: number | null;
 }
 
-function makeTripMarkerEl(
+interface TripMarkerHandle {
+  el: HTMLElement;
+  setActive: (active: boolean, index: number) => void;
+}
+
+interface PlaceMarkerHandle {
+  el: HTMLElement;
+  setSelected: (selected: boolean) => void;
+}
+
+function makeTripMarker(
   category: string,
   index: number,
   isActive: boolean,
   onClick: () => void,
-): HTMLElement {
-  const color    = CAT_COLOR[category] ?? "#B5A992";
-  const icon     = CAT_ICON[category] ?? CAT_ICON.design ?? "";
-  const size     = isActive ? 50 : 38;
-  const iconSize = isActive ? 22 : 16;
+): TripMarkerHandle {
+  const color = CAT_COLOR[category] ?? "#B5A992";
+  const icon  = CAT_ICON[category] ?? CAT_ICON.design ?? "";
 
   const wrap = document.createElement("div");
-  wrap.style.cssText = `position:relative;width:${size}px;height:${size + 10}px;cursor:pointer;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.28));`;
   wrap.addEventListener("click", onClick);
 
   const circle = document.createElement("div");
-  circle.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2.5px solid #FAF7F1;display:flex;align-items:center;justify-content:center;position:absolute;top:0;left:0;`;
-  circle.innerHTML = `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24">${icon}</svg>`;
-
   const tip = document.createElement("div");
-  tip.style.cssText = `position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid ${color};`;
+  const badge = document.createElement("div");
 
-  if (isActive) {
-    const badge = document.createElement("div");
-    badge.style.cssText = `position:absolute;top:-5px;right:-5px;width:20px;height:20px;border-radius:50%;background:#C99544;border:2px solid #FAF7F1;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;font-size:9px;font-weight:800;color:#FAF7F1;z-index:1;`;
-    badge.textContent = String(index + 1);
-    wrap.appendChild(badge);
-  }
+  badge.style.cssText = `position:absolute;top:-5px;right:-5px;width:20px;height:20px;border-radius:50%;background:#C99544;border:2px solid #FAF7F1;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;font-size:9px;font-weight:800;color:#FAF7F1;z-index:1;`;
 
+  tip.style.cssText = `position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;`;
+
+  wrap.appendChild(badge);
   wrap.appendChild(circle);
   wrap.appendChild(tip);
-  return wrap;
+
+  const apply = (active: boolean, idx: number) => {
+    const size     = active ? 50 : 38;
+    const iconSize = active ? 22 : 16;
+    wrap.style.cssText  = `position:relative;width:${size}px;height:${size + 10}px;cursor:pointer;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.28));`;
+    circle.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2.5px solid #FAF7F1;display:flex;align-items:center;justify-content:center;position:absolute;top:0;left:0;`;
+    circle.innerHTML    = `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24">${icon}</svg>`;
+    tip.style.borderTop = `10px solid ${color}`;
+    badge.style.display = active ? "flex" : "none";
+    badge.textContent   = String(idx + 1);
+  };
+
+  apply(isActive, index);
+
+  return { el: wrap, setActive: apply };
 }
 
-function makePlaceMarkerEl(
+function makePlaceMarker(
   category: string,
-  isSelected: boolean,
   onClick: () => void,
-): HTMLElement {
+): PlaceMarkerHandle {
   const color = CAT_COLOR[category] ?? "#B5A992";
   const icon  = CAT_ICON[category] ?? CAT_ICON.design ?? "";
-  const size  = isSelected ? 40 : 28;
-  const iconSize = isSelected ? 18 : 12;
 
   const wrap = document.createElement("div");
-  wrap.style.cssText = `position:relative;width:${size}px;height:${size + 7}px;cursor:pointer;filter:drop-shadow(0 1px 5px rgba(0,0,0,0.2));`;
   wrap.addEventListener("click", (e) => { e.stopPropagation(); onClick(); });
 
   const circle = document.createElement("div");
-  circle.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:${isSelected ? 1 : 0.65};border:${isSelected ? "2.5px" : "1.5px"} solid #FAF7F1;display:flex;align-items:center;justify-content:center;position:absolute;top:0;left:0;transition:opacity 0.15s;`;
-  circle.innerHTML = `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24">${icon}</svg>`;
-
   const tip = document.createElement("div");
-  tip.style.cssText = `position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:${isSelected ? 5 : 4}px solid transparent;border-right:${isSelected ? 5 : 4}px solid transparent;border-top:7px solid ${color};opacity:${isSelected ? 1 : 0.65};`;
+
+  tip.style.cssText = `position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:7px solid ${color};transition:opacity 0.15s;`;
 
   wrap.appendChild(circle);
   wrap.appendChild(tip);
-  return wrap;
+
+  const apply = (selected: boolean) => {
+    const size     = selected ? 40 : 28;
+    const iconSize = selected ? 18 : 12;
+    const opacity  = selected ? 1 : 0.65;
+    wrap.style.cssText   = `position:relative;width:${size}px;height:${size + 7}px;cursor:pointer;filter:drop-shadow(0 1px 5px rgba(0,0,0,0.2));`;
+    circle.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:${opacity};border:${selected ? "2.5px" : "1.5px"} solid #FAF7F1;display:flex;align-items:center;justify-content:center;position:absolute;top:0;left:0;transition:all 0.15s;`;
+    circle.innerHTML     = `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24">${icon}</svg>`;
+    tip.style.opacity    = String(opacity);
+    tip.style.borderLeft = `${selected ? 5 : 4}px solid transparent`;
+    tip.style.borderRight= `${selected ? 5 : 4}px solid transparent`;
+  };
+
+  apply(false);
+
+  return { el: wrap, setSelected: apply };
 }
 
 export function TripMapView({
@@ -121,9 +146,24 @@ export function TripMapView({
 }) {
   const containerRef    = useRef<HTMLDivElement>(null);
   const mapRef          = useRef<maplibregl.Map | null>(null);
-  const tripMarkersRef  = useRef<maplibregl.Marker[]>([]);
-  const placeMarkersRef = useRef<maplibregl.Marker[]>([]);
 
+  // Trip markers
+  const tripMarkersRef  = useRef<maplibregl.Marker[]>([]);
+  const tripHandlesRef  = useRef<TripMarkerHandle[]>([]);
+  const prevTripIdxRef  = useRef<number>(-1);
+
+  // Place markers
+  const placeMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const placeHandlesRef = useRef<Map<string, PlaceMarkerHandle>>(new Map());
+  const prevPlaceIdRef  = useRef<string | null>(null);
+
+  // Refs for current prop values (avoid stale closure in effects)
+  const selectedIdxRef      = useRef(selectedIdx);
+  const selectedPlaceIdRef  = useRef(selectedPlaceId ?? null);
+  useEffect(() => { selectedIdxRef.current = selectedIdx; }, [selectedIdx]);
+  useEffect(() => { selectedPlaceIdRef.current = selectedPlaceId ?? null; }, [selectedPlaceId]);
+
+  // Init map once
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     mapRef.current = new maplibregl.Map({
@@ -157,7 +197,7 @@ export function TripMapView({
     };
   }, []);
 
-  // Place markers (background layer)
+  // ── Place markers: rebuild only when places list or click handler changes ──
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !allPlaces) return;
@@ -165,22 +205,40 @@ export function TripMapView({
     const rebuild = () => {
       placeMarkersRef.current.forEach(m => m.remove());
       placeMarkersRef.current = [];
+      placeHandlesRef.current.clear();
+      prevPlaceIdRef.current = null;
+
+      const curSelected = selectedPlaceIdRef.current;
 
       allPlaces.forEach(place => {
-        const isSelected = place.id === selectedPlaceId;
-        const el = makePlaceMarkerEl(place.category, isSelected, () => onPlaceClick?.(place));
-        const m = new maplibregl.Marker({ element: el, anchor: "bottom" })
+        const handle = makePlaceMarker(place.category, () => onPlaceClick?.(place));
+        if (place.id === curSelected) handle.setSelected(true);
+        placeHandlesRef.current.set(place.id, handle);
+        const m = new maplibregl.Marker({ element: handle.el, anchor: "bottom" })
           .setLngLat([place.lng, place.lat])
           .addTo(map);
         placeMarkersRef.current.push(m);
       });
+
+      prevPlaceIdRef.current = curSelected;
     };
 
     if (map.isStyleLoaded()) rebuild();
     else map.once("load", rebuild);
-  }, [allPlaces, selectedPlaceId, onPlaceClick]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allPlaces, onPlaceClick]);
 
-  // Trip activity markers + route
+  // ── Place selection: mutate DOM directly, no marker rebuild ──
+  useEffect(() => {
+    const next = selectedPlaceId ?? null;
+    const prev = prevPlaceIdRef.current;
+    if (prev === next) return;
+    if (prev) placeHandlesRef.current.get(prev)?.setSelected(false);
+    if (next) placeHandlesRef.current.get(next)?.setSelected(true);
+    prevPlaceIdRef.current = next;
+  }, [selectedPlaceId]);
+
+  // ── Trip markers: rebuild when activity list changes ──
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -190,9 +248,13 @@ export function TripMapView({
     const rebuild = () => {
       tripMarkersRef.current.forEach(m => m.remove());
       tripMarkersRef.current = [];
+      tripHandlesRef.current = [];
+      prevTripIdxRef.current = -1;
 
+      const curIdx = selectedIdxRef.current;
       const coords = valid.map(a => [a.places!.lng, a.places!.lat] as [number, number]);
 
+      // Route line
       const geojson = {
         type: "Feature" as const,
         geometry: { type: "LineString" as const, coordinates: coords },
@@ -213,17 +275,15 @@ export function TripMapView({
       }
 
       valid.forEach((act, i) => {
-        const el = makeTripMarkerEl(
-          act.places!.category,
-          i,
-          i === selectedIdx,
-          () => onMarkerClick(i),
-        );
-        const m = new maplibregl.Marker({ element: el, anchor: "bottom" })
+        const handle = makeTripMarker(act.places!.category, i, i === curIdx, () => onMarkerClick(i));
+        tripHandlesRef.current.push(handle);
+        const m = new maplibregl.Marker({ element: handle.el, anchor: "bottom" })
           .setLngLat([act.places!.lng, act.places!.lat])
           .addTo(map);
         tripMarkersRef.current.push(m);
       });
+
+      prevTripIdxRef.current = curIdx;
 
       if (coords.length >= 2) {
         const bounds = coords.reduce(
@@ -242,9 +302,19 @@ export function TripMapView({
 
     if (map.isStyleLoaded()) rebuild();
     else map.once("load", rebuild);
-  }, [activities, selectedIdx, onMarkerClick]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activities, onMarkerClick]);
 
-  // Fly to selected trip stop
+  // ── Trip selection: mutate DOM directly ──
+  useEffect(() => {
+    const prev = prevTripIdxRef.current;
+    if (prev === selectedIdx) return;
+    if (prev >= 0) tripHandlesRef.current[prev]?.setActive(false, prev);
+    if (selectedIdx >= 0) tripHandlesRef.current[selectedIdx]?.setActive(true, selectedIdx);
+    prevTripIdxRef.current = selectedIdx;
+  }, [selectedIdx]);
+
+  // ── Fly to selected trip stop ──
   useEffect(() => {
     const map = mapRef.current;
     const act = activities[selectedIdx];
@@ -257,7 +327,7 @@ export function TripMapView({
     });
   }, [selectedIdx, activities]);
 
-  // Fly to selected place
+  // ── Fly to selected place ──
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selectedPlaceId || !allPlaces) return;

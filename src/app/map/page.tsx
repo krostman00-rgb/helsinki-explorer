@@ -338,7 +338,7 @@ export default function MapPage() {
 
       {/* ── Bottom: trip activity cards ── */}
       {!selectedPlace && trip && view === "map" && (
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20, background: "var(--hh-linen-100)", borderTop: "0.5px solid var(--hh-linen-300)", paddingTop: 12, paddingBottom: 20 }}>
+        <div style={{ position: "absolute", bottom: 20, left: 0, right: 0, zIndex: 20 }}>
           <div ref={cardsRef} style={{ display: "flex", gap: 10, overflowX: "auto", padding: "0 20px", scrollbarWidth: "none", scrollSnapType: "x mandatory" }}>
             {validActivities.map((act, i) => {
               const cat   = act.places?.category ?? "";
