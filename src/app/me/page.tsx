@@ -198,7 +198,7 @@ export default function MePage() {
     );
   }
 
-  const name    = stats?.displayName;
+  const name    = stats?.displayName ?? null;
   const avatarInitials = initials(name, user?.id.slice(-2).toUpperCase() ?? "EX");
   const shortId = user?.id.slice(-8).toUpperCase() ?? "--------";
   const tenure  = stats ? yearsMonths(stats.memberSince) : "exploring Helsinki";
