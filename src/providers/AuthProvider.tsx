@@ -29,9 +29,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInAnonymously = useCallback(async () => {
     const supabase = createClient();
-    const { error } = await supabase.auth.signInAnonymously();
+    const { data, error } = await supabase.auth.signInAnonymously();
     if (error) {
       console.error("Anonymous sign-in failed:", error.message);
+    } else if (data.session) {
+      setSession(data.session);
+      setUser(data.session.user);
     }
   }, []);
 
