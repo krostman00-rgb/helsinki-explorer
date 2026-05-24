@@ -13,6 +13,8 @@ import { useAuth } from "@/providers/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
 import type { Trip, TripDay, TripActivity, Place } from "@/types/database.types";
 import type { MapActivity, MapPlace } from "@/components/TripMapView";
+import type { TransitResult } from "@/lib/transit";
+import { TransitConnector } from "@/components/TransitConnector";
 
 const TripMapView = dynamic(
   () => import("@/components/TripMapView").then((m) => m.TripMapView),
@@ -63,14 +65,7 @@ interface DayWithActivities extends TripDay {
 
 function pad2(n: number) { return String(n).padStart(2, "0"); }
 
-// ── Transit types & helpers ────────────────────────────────────
-interface TransitLeg { mode: string; durationMin: number; line: string | null }
-interface TransitResult { totalMin: number; legs: TransitLeg[] }
-
-const MODE_ICON: Record<string, string> = {
-  TRAM: "🚊", BUS: "🚌", SUBWAY: "🚇", FERRY: "⛴", RAIL: "🚆", WALK: "🚶",
-};
-
+// ── Transit fetch helper ───────────────────────────────────────
 async function fetchTransitLeg(
   fromLat: number, fromLng: number,
   toLat: number,   toLng: number,
@@ -84,34 +79,6 @@ async function fetchTransitLeg(
     if (!res.ok) return null;
     return await res.json() as TransitResult;
   } catch { return null; }
-}
-
-function TransitConnector({ transit, loading }: { transit: TransitResult | null; loading: boolean }) {
-  if (loading) {
-    return (
-      <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", width: 48 }}>
-        <div style={{ width: 4, height: 4, borderRadius: "50%", background: "rgba(26,22,17,0.2)", animation: "pulse 1.2s ease infinite" }}/>
-      </div>
-    );
-  }
-  if (!transit) return <div style={{ flex: "0 0 8px" }}/>;
-
-  const primary = transit.legs.find(l => l.mode !== "WALK") ?? transit.legs[0];
-  const icon    = MODE_ICON[primary?.mode ?? "WALK"] ?? "→";
-
-  return (
-    <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: "0 2px", minWidth: 52 }}>
-      <span style={{ fontSize: 15 }}>{icon}</span>
-      {primary?.line && (
-        <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, fontWeight: 700, color: "rgba(26,22,17,0.7)", background: "rgba(26,22,17,0.08)", padding: "1px 5px", borderRadius: 4, letterSpacing: "0.04em" }}>
-          {primary.line}
-        </span>
-      )}
-      <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: "rgba(26,22,17,0.4)", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
-        {transit.totalMin} min
-      </span>
-    </div>
-  );
 }
 
 export default function MapPage() {

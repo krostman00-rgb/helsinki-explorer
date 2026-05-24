@@ -9,14 +9,13 @@ export async function GET(req: NextRequest) {
   const fromLng     = p.get("fromLng");
   const toLat       = p.get("toLat");
   const toLng       = p.get("toLng");
-  const timeParam   = p.get("time") ?? "09:00:00"; // e.g. "09:30:00"
+  const timeParam   = p.get("time") ?? "09:00:00";
 
   if (!fromLat || !fromLng || !toLat || !toLng) {
     return NextResponse.json({ error: "Missing params" }, { status: 400 });
   }
 
-  // Use today's date so we get correct weekday schedules
-  const today = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
+  const today = new Date().toISOString().split("T")[0];
 
   const apiKey = process.env.DIGITRANSIT_API_KEY;
   if (!apiKey) {
@@ -36,15 +35,25 @@ export async function GET(req: NextRequest) {
         { mode: BUS }
         { mode: SUBWAY }
         { mode: FERRY }
+        { mode: RAIL }
       ]
     ) {
       itineraries {
         duration
+        walkDistance
         legs {
           mode
           duration
           distance
-          route { shortName }
+          route {
+            shortName
+            longName
+            type
+            mode
+          }
+          trip {
+            tripHeadsign
+          }
           from { name }
           to   { name }
         }
@@ -60,7 +69,7 @@ export async function GET(req: NextRequest) {
         "digitransit-subscription-key": apiKey,
       },
       body: JSON.stringify({ query }),
-      next: { revalidate: 3600 }, // cache 1 h — routes don't change often
+      next: { revalidate: 3600 },
     });
 
     if (!res.ok) {
@@ -68,35 +77,46 @@ export async function GET(req: NextRequest) {
     }
 
     const json = await res.json();
-
     if (json.errors) {
       console.error("Digitransit GraphQL errors:", JSON.stringify(json.errors));
     }
 
     const itinerary = json.data?.plan?.itineraries?.[0];
-
     if (!itinerary) {
       console.error("No itinerary in response:", JSON.stringify(json).slice(0, 400));
       return NextResponse.json({ error: "No route found" }, { status: 404 });
     }
 
-    const totalMin = Math.round((itinerary.duration as number) / 60);
+    const totalMin     = Math.round((itinerary.duration as number) / 60);
+    const walkDistanceM = Math.round((itinerary.walkDistance as number) ?? 0);
 
-    type RawLeg = { mode: string; duration: number; route: { shortName: string } | null; from: { name: string }; to: { name: string } };
+    type RawLeg = {
+      mode: string;
+      duration: number;
+      distance: number;
+      route: { shortName: string | null; longName: string | null; type: number | null; mode: string | null } | null;
+      trip: { tripHeadsign: string | null } | null;
+      from: { name: string | null } | null;
+      to:   { name: string | null } | null;
+    };
     const rawLegs = itinerary.legs as RawLeg[];
 
-    // Build simplified leg list — skip walks under 90 seconds
+    // Keep all legs including walks ≥ 30 s (drop only tiny stop-to-platform walks).
     const legs = rawLegs
-      .filter(l => l.mode !== "WALK" || l.duration >= 90)
+      .filter(l => l.mode !== "WALK" || l.duration >= 30)
       .map(l => ({
-        mode:     l.mode,
+        mode:        l.mode,
         durationMin: Math.max(1, Math.round(l.duration / 60)),
-        line:     l.route?.shortName ?? null,
-        fromStop: l.from?.name ?? null,
-        toStop:   l.to?.name ?? null,
+        distanceM:   Math.round(l.distance ?? 0),
+        line:        l.route?.shortName ?? null,
+        routeName:   l.route?.longName  ?? null,
+        routeType:   l.route?.type      ?? null,
+        headsign:    l.trip?.tripHeadsign ?? null,
+        fromStop:    l.from?.name ?? null,
+        toStop:      l.to?.name   ?? null,
       }));
 
-    return NextResponse.json({ totalMin, legs });
+    return NextResponse.json({ totalMin, walkDistanceM, legs });
   } catch {
     return NextResponse.json({ error: "Fetch failed" }, { status: 500 });
   }
