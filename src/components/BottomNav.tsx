@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const HIDDEN_ON = ["/", "/onboarding"];
+const HIDDEN_ON = ["/", "/onboarding", "/discover"];
 
 const NAV_ITEMS = [
   {

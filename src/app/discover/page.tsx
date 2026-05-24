@@ -29,7 +29,7 @@ const CAT_LABEL: Record<string, string> = {
 const PRICE: Record<number, string> = { 1:"€", 2:"€€", 3:"€€€" };
 
 // ── Swipe threshold ───────────────────────────────────────────
-const THRESHOLD = 110;
+const THRESHOLD = 80;
 
 // ── Card component ────────────────────────────────────────────
 interface CardProps {
@@ -67,6 +67,7 @@ function PlaceCard({ place, stackPos, progressRatio, onSwipe, onDragProgress, co
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (!isTop || phase !== "idle") return;
+    e.preventDefault();                           // stop browser scroll stealing
     e.currentTarget.setPointerCapture(e.pointerId);
     startRef.current = { x: e.clientX, y: e.clientY };
     setPhase("dragging");
@@ -219,6 +220,8 @@ export default function DiscoverPage() {
   const [toast, setToast]               = useState<string | null>(null);
   const [dragRatio, setDragRatio]       = useState(0);
   const [commandedExit, setCommandedExit] = useState<"left" | "right" | null>(null);
+  // Keep preloaded Image objects alive (GC would drop them otherwise)
+  const preloadRef = useRef<HTMLImageElement[]>([]);
 
   // Reset command when card advances
   useEffect(() => { setCommandedExit(null); }, [currentIdx]);
@@ -272,16 +275,18 @@ export default function DiscoverPage() {
     })();
   }, [user]);
 
-  // Preload next card's image
+  // Preload next 2 cards — store in ref so GC doesn't drop them
   useEffect(() => {
-    if (currentIdx + 1 < places.length) {
-      const img = new window.Image();
-      img.src = imageUrl(places[currentIdx + 1]);
+    const imgs: HTMLImageElement[] = [];
+    for (const offset of [1, 2]) {
+      const idx = currentIdx + offset;
+      if (idx < places.length) {
+        const img = new window.Image();
+        img.src = imageUrl(places[idx]);
+        imgs.push(img);
+      }
     }
-    if (currentIdx + 2 < places.length) {
-      const img = new window.Image();
-      img.src = imageUrl(places[currentIdx + 2]);
-    }
+    preloadRef.current = imgs;           // keep alive until next effect
   }, [currentIdx, places]);
 
   const addToTrip = useCallback(async (place: Place) => {
@@ -374,7 +379,7 @@ export default function DiscoverPage() {
       </div>
 
       {/* ── Card stack ── */}
-      <div style={{ flex: 1, position: "relative", margin: "0 20px" }}>
+      <div style={{ flex: 1, position: "relative", margin: "0 20px", touchAction: "none", overflow: "hidden" }}>
         {done ? (
           <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
             <div style={{ fontSize: 48 }}>🎉</div>
