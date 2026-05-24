@@ -35,12 +35,13 @@ const THRESHOLD = 110;
 interface CardProps {
   place: Place;
   stackPos: 0 | 1 | 2;
-  progressRatio: number;        // 0→1 how far current card has moved (from parent)
+  progressRatio: number;
   onSwipe: (dir: "left" | "right") => void;
   onDragProgress?: (ratio: number) => void;
+  commandedExit?: "left" | "right" | null;  // parent triggers button-tap animation
 }
 
-function PlaceCard({ place, stackPos, progressRatio, onSwipe, onDragProgress }: CardProps) {
+function PlaceCard({ place, stackPos, progressRatio, onSwipe, onDragProgress, commandedExit }: CardProps) {
   const [drag, setDrag] = useState({ x: 0, y: 0 });
   const [phase, setPhase] = useState<"idle" | "dragging" | "flying-right" | "flying-left">("idle");
   const startRef = useRef({ x: 0, y: 0 });
@@ -55,6 +56,14 @@ function PlaceCard({ place, stackPos, progressRatio, onSwipe, onDragProgress }: 
     onDragProgress?.(0);
     setTimeout(() => onSwipe(dir), 380);
   }, [onSwipe, onDragProgress]);
+
+  // Respond to button-triggered exit command
+  useEffect(() => {
+    if (commandedExit && isTop && phase === "idle") {
+      exitDir(commandedExit);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [commandedExit]);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (!isTop || phase !== "idle") return;
@@ -206,13 +215,14 @@ export default function DiscoverPage() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [loading, setLoading]       = useState(true);
   const [tripDayId, setTripDayId]   = useState<string | null>(null);
-  const [addedCount, setAddedCount] = useState(0);
-  const [toast, setToast]           = useState<string | null>(null);
+  const [addedCount, setAddedCount]     = useState(0);
+  const [toast, setToast]               = useState<string | null>(null);
+  const [dragRatio, setDragRatio]       = useState(0);
+  const [commandedExit, setCommandedExit] = useState<"left" | "right" | null>(null);
 
-  // Drag progress for stack animation (0→1)
-  const [dragRatio, setDragRatio]   = useState(0);
+  // Reset command when card advances
+  useEffect(() => { setCommandedExit(null); }, [currentIdx]);
 
-  // Track drag progress from the top card
   const handleDragProgress = useCallback((ratio: number) => {
     setDragRatio(ratio);
   }, []);
@@ -301,15 +311,41 @@ export default function DiscoverPage() {
     setCurrentIdx(n => n + 1);
   }, [places, currentIdx, addToTrip]);
 
+  // Button tap: set the command — card's useEffect picks it up and runs exitDir,
+  // which fires onSwipe (handleSwipe) after the animation completes.
   const triggerSwipe = useCallback((dir: "left" | "right") => {
-    // Button tap — we directly call handleSwipe after a delay to let the card animate
-    handleSwipe(dir);
-  }, [handleSwipe]);
+    setCommandedExit(dir);
+  }, []);
 
   if (authLoading || loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100dvh", background: "#F0EDE6" }}>
         <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#8C8170", letterSpacing: "0.12em" }}>Loading places…</div>
+      </div>
+    );
+  }
+
+  // Guard: no trip exists yet
+  if (!tripDayId) {
+    return (
+      <div style={{ height: "100dvh", background: "#F0EDE6", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "0 32px", textAlign: "center" }}>
+        <div style={{ fontSize: 48 }}>🗺️</div>
+        <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 26, color: "#1A1611" }}>No trip yet</div>
+        <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14, color: "#8C8170", lineHeight: 1.6 }}>
+          Create a Helsinki trip first — then come back here to discover more places.
+        </div>
+        <button
+          onClick={() => router.push("/onboarding")}
+          style={{ marginTop: 8, height: 48, padding: "0 28px", borderRadius: 999, background: "#1A1611", border: "none", fontFamily: "var(--font-geist-sans)", fontSize: 15, fontWeight: 500, color: "#FAF7F1", cursor: "pointer" }}
+        >
+          Create trip →
+        </button>
+        <button
+          onClick={() => router.back()}
+          style={{ height: 36, padding: "0 20px", borderRadius: 999, background: "transparent", border: "0.5px solid #DDD8CE", fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "#8C8170", cursor: "pointer" }}
+        >
+          Go back
+        </button>
       </div>
     );
   }
@@ -367,6 +403,7 @@ export default function DiscoverPage() {
                   progressRatio={dragRatio}
                   onSwipe={handleSwipe}
                   onDragProgress={offset === 0 ? handleDragProgress : undefined}
+                  commandedExit={offset === 0 ? commandedExit : null}
                 />
               );
             })}
