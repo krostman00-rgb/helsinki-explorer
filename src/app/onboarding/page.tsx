@@ -534,15 +534,15 @@ function StepDiscover({
             <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 18, fontWeight: 700, color: "rgba(80,80,80,0.85)", letterSpacing: "0.1em" }}>SKIP</span>
           </div>
 
-          {/* card content */}
-          <div style={{ borderRadius: 24, overflow: "hidden", width: "100%", height: "100%", boxShadow: "0 16px 48px rgba(26,22,17,0.22)" }}>
+          {/* card content — position:relative so absolute overlays are clipped by overflow:hidden */}
+          <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", width: "100%", height: "100%", boxShadow: "0 16px 48px rgba(26,22,17,0.22)" }}>
             {/* image */}
             <img src={imgSrc} alt={current.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }}/>
 
             {/* top row overlay */}
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "16px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ background: "rgba(26,22,17,0.72)", backdropFilter: "blur(6px)", borderRadius: 999, padding: "5px 12px" }}>
-                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: "#FAF7F1", letterSpacing: "0.12em" }}>● {catLabel}</span>
+              <div style={{ background: "rgba(26,22,17,0.72)", backdropFilter: "blur(6px)", borderRadius: 999, padding: "5px 12px", display: "flex", alignItems: "center" }}>
+                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: "#FAF7F1", letterSpacing: "0.12em", lineHeight: 1 }}>{catLabel}</span>
               </div>
               <div style={{ background: "rgba(250,247,241,0.18)", backdropFilter: "blur(6px)", borderRadius: 999, padding: "5px 12px" }}>
                 <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 15, color: "#FAF7F1", letterSpacing: "0.02em" }}>{PRICE_MARK[current.price_level ?? 1]}</span>
@@ -584,7 +584,7 @@ function StepDiscover({
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="var(--hh-stone-500)" strokeWidth="1.4" strokeLinecap="round"/></svg>
         </button>
 
-        <button onClick={() => advance(true)} style={{ height: 52, padding: "0 28px", borderRadius: 999, background: "var(--hh-copper-600)", border: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", boxShadow: "0 6px 20px rgba(182,90,55,0.38)" }}>
+        <button onClick={() => advance(true)} style={{ height: 52, padding: "0 24px", borderRadius: 999, background: "var(--hh-copper-600)", border: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", boxShadow: "0 6px 20px rgba(182,90,55,0.38)", whiteSpace: "nowrap", flexShrink: 0 }}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="#FAF7F1" strokeWidth="1.8" strokeLinecap="round"/></svg>
           <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 15, fontWeight: 500, color: "#FAF7F1" }}>Add to list</span>
         </button>
