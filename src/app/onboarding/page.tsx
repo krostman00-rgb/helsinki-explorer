@@ -365,7 +365,7 @@ function StepDiscover({
     if (!deck.length) return;
     const imgs: HTMLImageElement[] = [];
     for (let i = idx; i < Math.min(idx + 3, deck.length); i++) {
-      const src = PLACE_IMAGES[deck[i].name] ?? "/assets/helsinki-cathedral-alley.jpg";
+      const src = deck[i].image_url ?? PLACE_IMAGES[deck[i].name] ?? "/assets/helsinki-cathedral-alley.jpg";
       const img = new window.Image();
       img.src = src;
       imgs.push(img);
@@ -429,8 +429,8 @@ function StepDiscover({
     );
   }
 
-  const imgSrc   = PLACE_IMAGES[current.name] ?? "/assets/helsinki-cathedral-alley.jpg";
-  const nextImg  = PLACE_IMAGES[nextCard?.name ?? ""] ?? "/assets/helsinki-cathedral-alley.jpg";
+  const imgSrc  = current.image_url  ?? PLACE_IMAGES[current.name]          ?? "/assets/helsinki-cathedral-alley.jpg";
+  const nextImg = nextCard?.image_url ?? PLACE_IMAGES[nextCard?.name ?? ""] ?? "/assets/helsinki-cathedral-alley.jpg";
   const catLabel = CATEGORY_LABEL_UPPER[current.category] ?? current.category.toUpperCase();
   const tags     = (current.tags as string[]).slice(0, 3);
 

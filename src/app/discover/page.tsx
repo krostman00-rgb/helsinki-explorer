@@ -9,6 +9,7 @@ import type { Place } from "@/types/database.types";
 
 // ── Deterministic image per place ─────────────────────────────
 function imageUrl(place: Place): string {
+  if (place.image_url) return place.image_url;
   const seed = place.name.toLowerCase().replace(/[^a-z0-9]/g, "-");
   return `https://picsum.photos/seed/${seed}/420/540`;
 }
