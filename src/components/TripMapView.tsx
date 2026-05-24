@@ -63,16 +63,19 @@ function makeTripMarker(
   const color = CAT_COLOR[category] ?? "#B5A992";
   const icon  = CAT_ICON[category] ?? CAT_ICON.design ?? "";
 
+  // Outer wrap — MapLibre OWNS its `position` and `transform`. We MUST NOT
+  // override them via `style.cssText`. Only set non-positioning styles here,
+  // and use individual style properties (never cssText) for size updates.
   const wrap = document.createElement("div");
+  wrap.style.cursor = "pointer";
+  wrap.style.filter = "drop-shadow(0 2px 8px rgba(0,0,0,0.28))";
   wrap.addEventListener("click", onClick);
 
+  // Children (badge/circle/tip) are absolute and positioned against the wrap,
+  // which becomes `position:absolute` via MapLibre's `.maplibregl-marker` class.
   const circle = document.createElement("div");
-  const tip = document.createElement("div");
-  const badge = document.createElement("div");
-
-  badge.style.cssText = `position:absolute;top:-5px;right:-5px;width:20px;height:20px;border-radius:50%;background:#C99544;border:2px solid #FAF7F1;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;font-size:9px;font-weight:800;color:#FAF7F1;z-index:1;`;
-
-  tip.style.cssText = `position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;`;
+  const tip    = document.createElement("div");
+  const badge  = document.createElement("div");
 
   wrap.appendChild(badge);
   wrap.appendChild(circle);
@@ -81,10 +84,18 @@ function makeTripMarker(
   const apply = (active: boolean, idx: number) => {
     const size     = active ? 50 : 38;
     const iconSize = active ? 22 : 16;
-    wrap.style.cssText  = `position:relative;width:${size}px;height:${size + 10}px;cursor:pointer;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.28));`;
+
+    // Resize wrap with INDIVIDUAL properties (not cssText) so MapLibre's
+    // inline `transform` survives.
+    wrap.style.width  = `${size}px`;
+    wrap.style.height = `${size + 10}px`;
+
     circle.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2.5px solid #FAF7F1;display:flex;align-items:center;justify-content:center;position:absolute;top:0;left:0;`;
-    circle.innerHTML    = `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24">${icon}</svg>`;
-    tip.style.borderTop = `10px solid ${color}`;
+    circle.innerHTML     = `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24">${icon}</svg>`;
+
+    tip.style.cssText = `position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid ${color};`;
+
+    badge.style.cssText = `position:absolute;top:-5px;right:-5px;width:20px;height:20px;border-radius:50%;background:#C99544;border:2px solid #FAF7F1;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;font-size:9px;font-weight:800;color:#FAF7F1;z-index:1;`;
     badge.style.display = active ? "flex" : "none";
     badge.textContent   = String(idx + 1);
   };
@@ -101,13 +112,14 @@ function makePlaceMarker(
   const color = CAT_COLOR[category] ?? "#B5A992";
   const icon  = CAT_ICON[category] ?? CAT_ICON.design ?? "";
 
+  // Same approach as makeTripMarker — don't touch position or transform.
   const wrap = document.createElement("div");
+  wrap.style.cursor = "pointer";
+  wrap.style.filter = "drop-shadow(0 1px 5px rgba(0,0,0,0.2))";
   wrap.addEventListener("click", (e) => { e.stopPropagation(); onClick(); });
 
   const circle = document.createElement("div");
-  const tip = document.createElement("div");
-
-  tip.style.cssText = `position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:7px solid ${color};transition:opacity 0.15s;`;
+  const tip    = document.createElement("div");
 
   wrap.appendChild(circle);
   wrap.appendChild(tip);
@@ -116,12 +128,14 @@ function makePlaceMarker(
     const size     = selected ? 40 : 28;
     const iconSize = selected ? 18 : 12;
     const opacity  = selected ? 1 : 0.65;
-    wrap.style.cssText   = `position:relative;width:${size}px;height:${size + 7}px;cursor:pointer;filter:drop-shadow(0 1px 5px rgba(0,0,0,0.2));`;
+
+    wrap.style.width  = `${size}px`;
+    wrap.style.height = `${size + 7}px`;
+
     circle.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:${opacity};border:${selected ? "2.5px" : "1.5px"} solid #FAF7F1;display:flex;align-items:center;justify-content:center;position:absolute;top:0;left:0;transition:all 0.15s;`;
     circle.innerHTML     = `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24">${icon}</svg>`;
-    tip.style.opacity    = String(opacity);
-    tip.style.borderLeft = `${selected ? 5 : 4}px solid transparent`;
-    tip.style.borderRight= `${selected ? 5 : 4}px solid transparent`;
+
+    tip.style.cssText = `position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:${selected ? 5 : 4}px solid transparent;border-right:${selected ? 5 : 4}px solid transparent;border-top:7px solid ${color};opacity:${opacity};transition:opacity 0.15s;`;
   };
 
   apply(false);

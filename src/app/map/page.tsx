@@ -274,9 +274,6 @@ export default function MapPage() {
             activities={mapActivities}
             selectedIdx={selectedIdx}
             onMarkerClick={handleMarkerClick}
-            allPlaces={filteredPlaces}
-            selectedPlaceId={selectedPlace?.id ?? null}
-            onPlaceClick={handlePlaceClick}
           />
         </div>
       )}
