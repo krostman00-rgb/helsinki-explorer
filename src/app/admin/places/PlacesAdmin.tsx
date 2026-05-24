@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import type { Place } from "@/types/database.types";
 import LocationPicker from "./LocationPicker";
+import ImageUploader from "./ImageUploader";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -554,24 +555,13 @@ export default function PlacesAdmin({
               />
             </div>
 
-            {/* Image URL */}
+            {/* Image upload */}
             <div className="sm:col-span-2 flex flex-col gap-1.5">
-              <FieldLabel>Kuvan URL</FieldLabel>
-              <Input
+              <FieldLabel>Kuva</FieldLabel>
+              <ImageUploader
                 value={form.image_url}
-                onChange={e => setField("image_url", e.target.value)}
-                placeholder="https://..."
-                className="h-10"
+                onChange={url => setField("image_url", url)}
               />
-              {form.image_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={form.image_url}
-                  alt="preview"
-                  className="mt-1 h-28 w-full rounded-lg object-cover border border-border"
-                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
-              )}
             </div>
 
             {/* Website */}
