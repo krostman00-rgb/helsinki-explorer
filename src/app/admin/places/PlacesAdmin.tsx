@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import type { Place } from "@/types/database.types";
+import LocationPicker from "./LocationPicker";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -473,6 +474,22 @@ export default function PlacesAdmin({
                 <option value="3">€€€ — Kallis</option>
                 <option value="4">€€€€ — Luksus</option>
               </select>
+            </div>
+
+            {/* Location picker map */}
+            <div className="sm:col-span-2 flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Sijainti *
+              </span>
+              <LocationPicker
+                initialLat={form.lat ? parseFloat(form.lat) : undefined}
+                initialLng={form.lng ? parseFloat(form.lng) : undefined}
+                onPick={({ lat, lng, address }) => {
+                  setField("lat", String(lat));
+                  setField("lng", String(lng));
+                  if (address) setField("address", address);
+                }}
+              />
             </div>
 
             {/* Lat */}
