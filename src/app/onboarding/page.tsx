@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Utensils, Flame, Landmark, Gem, TreePine, Moon,
   Building2, ShoppingBag, Users, History, Coffee, CalendarDays, ChevronLeft,
@@ -321,12 +321,21 @@ function StepDiscover({
   isSubmitting: boolean;
   errorMessage?: string | null;
 }) {
-  const [deck, setDeck]       = useState<Place[]>([]);
-  const [idx, setIdx]         = useState(0);
-  const [picked, setPicked]   = useState<string[]>([]);
-  const [exiting, setExiting] = useState(false);
-  const [round, setRound]     = useState(1);
-  const headlineRef           = useState(() => DISCOVER_HEADLINES[Math.floor(Math.random() * DISCOVER_HEADLINES.length)])[0];
+  const [deck, setDeck]         = useState<Place[]>([]);
+  const [idx, setIdx]           = useState(0);
+  const [picked, setPicked]     = useState<string[]>([]);
+  const [exiting, setExiting]   = useState(false);
+  const [round, setRound]       = useState(1);
+  const headlineRef             = useState(() => DISCOVER_HEADLINES[Math.floor(Math.random() * DISCOVER_HEADLINES.length)])[0];
+
+  // Swipe drag state
+  const [dragX, setDragX]         = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const isPointerDown             = useRef(false);
+  const dragStartX                = useRef(0);
+
+  // Preload images — store refs so GC doesn't collect them
+  const preloadRef = useRef<HTMLImageElement[]>([]);
 
   useEffect(() => {
     const INTEREST_CATEGORIES: Record<string, string[]> = {
@@ -344,7 +353,6 @@ function StepDiscover({
         if (error) { console.error("Discover fetch error:", error.message); return; }
         if (data) {
           const filtered = data.filter(p => (p.price_level ?? 1) <= budgetLevel);
-          // Sort: interest-matching places first, then random within each group
           const matched   = filtered.filter(p => wantedCategories.has(p.category)).sort(() => Math.random() - 0.5);
           const unmatched = filtered.filter(p => !wantedCategories.has(p.category)).sort(() => Math.random() - 0.5);
           setDeck([...matched, ...unmatched]);
@@ -352,10 +360,24 @@ function StepDiscover({
       });
   }, [budgetLevel, interests]);
 
+  // Preload the next 3 images whenever idx changes
+  useEffect(() => {
+    if (!deck.length) return;
+    const imgs: HTMLImageElement[] = [];
+    for (let i = idx; i < Math.min(idx + 3, deck.length); i++) {
+      const src = PLACE_IMAGES[deck[i].name] ?? "/assets/helsinki-cathedral-alley.jpg";
+      const img = new window.Image();
+      img.src = src;
+      imgs.push(img);
+    }
+    preloadRef.current = imgs; // keep reference so GC doesn't collect
+  }, [deck, idx]);
+
   const advance = useCallback((addCurrent: boolean) => {
     const place = deck[idx];
     if (addCurrent && place) setPicked(p => [...p, place.id]);
 
+    setDragX(0);
     setExiting(true);
     setTimeout(() => {
       setExiting(false);
@@ -367,6 +389,34 @@ function StepDiscover({
       }
     }, 220);
   }, [deck, idx]);
+
+  // ── Pointer / swipe handlers ──────────────────────────────
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (exiting) return;
+    e.preventDefault();
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    isPointerDown.current = true;
+    dragStartX.current = e.clientX;
+    setDragX(0);
+    setIsDragging(true);
+  }, [exiting]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isPointerDown.current) return;
+    setDragX(e.clientX - dragStartX.current);
+  }, []);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isPointerDown.current) return;
+    isPointerDown.current = false;
+    setIsDragging(false);
+    const dx = e.clientX - dragStartX.current;
+    if (Math.abs(dx) > 80) {
+      advance(dx > 0);
+    } else {
+      setDragX(0);
+    }
+  }, [advance]);
 
   const current  = deck[idx];
   const nextCard = deck[idx + 1] ?? deck[0];
@@ -383,6 +433,25 @@ function StepDiscover({
   const nextImg  = PLACE_IMAGES[nextCard?.name ?? ""] ?? "/assets/helsinki-cathedral-alley.jpg";
   const catLabel = CATEGORY_LABEL_UPPER[current.category] ?? current.category.toUpperCase();
   const tags     = (current.tags as string[]).slice(0, 3);
+
+  // Derived transform values
+  const frontTransform = exiting
+    ? "scale(0.9) translateY(-30px)"
+    : (isDragging || dragX !== 0)
+    ? `translateX(${dragX}px) rotate(${dragX * 0.05}deg)`
+    : "scale(1) translateY(0)";
+  const frontTransition = isDragging
+    ? "none"
+    : "transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.22s ease";
+
+  // Stamp opacities
+  const likeOpacity = Math.min(1, Math.max(0, (dragX - 25) / 55));
+  const skipOpacity = Math.min(1, Math.max(0, (-dragX - 25) / 55));
+
+  // Back card scale interpolation based on drag progress
+  const dragProgress = Math.min(1, Math.abs(dragX) / 120);
+  const backScale    = 0.94 + dragProgress * 0.06;
+  const backTranslY  = 12 - dragProgress * 12;
 
   return (
     <div style={{ width: "100%", minHeight: "100dvh", background: "var(--hh-linen-100)", display: "flex", flexDirection: "column", padding: "56px 20px 32px", boxSizing: "border-box" }}>
@@ -412,58 +481,95 @@ function StepDiscover({
       </div>
 
       {/* card stack */}
-      <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-        {/* back card (next) */}
+      <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", touchAction: "none" }}>
+        {/* back card (next) — scales up as front card is dragged away */}
         {nextCard && (
-          <div style={{ position: "absolute", inset: 0, borderRadius: 24, overflow: "hidden", transform: "scale(0.94) translateY(12px)", zIndex: 0 }}>
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: 24, overflow: "hidden",
+            transform: `scale(${backScale}) translateY(${backTranslY}px)`,
+            transition: isDragging ? "none" : "transform 0.32s ease",
+            zIndex: 0,
+          }}>
             <img src={nextImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>
             <div style={{ position: "absolute", inset: 0, background: "rgba(250,247,241,0.15)" }}/>
           </div>
         )}
 
-        {/* front card */}
-        <div style={{
-          position: "relative", zIndex: 1,
-          borderRadius: 24, overflow: "hidden",
-          height: "min(480px, 62dvh)",
-          transform: exiting ? "scale(0.9) translateY(-30px)" : "scale(1) translateY(0)",
-          opacity: exiting ? 0 : 1,
-          transition: "transform 0.22s ease, opacity 0.22s ease",
-          boxShadow: "0 16px 48px rgba(26,22,17,0.22)",
-        }}>
-          {/* image */}
-          <img src={imgSrc} alt={current.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}/>
-
-          {/* top row overlay */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "16px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ background: "rgba(26,22,17,0.72)", backdropFilter: "blur(6px)", borderRadius: 999, padding: "5px 12px" }}>
-              <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: "#FAF7F1", letterSpacing: "0.12em" }}>● {catLabel}</span>
-            </div>
-            <div style={{ background: "rgba(250,247,241,0.18)", backdropFilter: "blur(6px)", borderRadius: 999, padding: "5px 12px" }}>
-              <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 15, color: "#FAF7F1", letterSpacing: "0.02em" }}>{PRICE_MARK[current.price_level ?? 1]}</span>
-            </div>
+        {/* front card wrapper — pointer events live here */}
+        <div
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={{
+            position: "relative", zIndex: 1,
+            height: "min(480px, 62dvh)",
+            transform: frontTransform,
+            opacity: exiting ? 0 : 1,
+            transition: frontTransition,
+            touchAction: "none",
+            cursor: isDragging ? "grabbing" : "grab",
+            userSelect: "none",
+          }}
+        >
+          {/* ADD stamp — appears when dragging right */}
+          <div style={{
+            position: "absolute", top: 22, left: 18, zIndex: 10,
+            opacity: likeOpacity, pointerEvents: "none",
+            transform: "rotate(-14deg)",
+            border: "2.5px solid var(--hh-copper-600)",
+            borderRadius: 8, padding: "4px 14px",
+          }}>
+            <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 18, fontWeight: 700, color: "var(--hh-copper-600)", letterSpacing: "0.1em" }}>ADD ♥</span>
           </div>
 
-          {/* bottom overlay */}
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(26,22,17,0.88) 0%, rgba(26,22,17,0.6) 55%, transparent 100%)", padding: "48px 18px 20px" }}>
-            <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: "rgba(250,247,241,0.55)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
-              Why this · for you
-            </div>
-            <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 30, lineHeight: 1.0, letterSpacing: "-0.02em", color: "#FAF7F1", marginBottom: 8 }}>
-              {current.name}
-            </div>
-            <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 13, lineHeight: 1.45, color: "rgba(250,247,241,0.75)", marginBottom: 12 }}>
-              {current.description}
-            </div>
-            {tags.length > 0 && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {tags.map(tag => (
-                  <span key={tag} style={{ background: "rgba(250,247,241,0.14)", border: "0.5px solid rgba(250,247,241,0.25)", borderRadius: 999, padding: "3px 10px", fontFamily: "var(--font-geist-sans)", fontSize: 11, color: "rgba(250,247,241,0.8)" }}>
-                    {tag}
-                  </span>
-                ))}
+          {/* SKIP stamp — appears when dragging left */}
+          <div style={{
+            position: "absolute", top: 22, right: 18, zIndex: 10,
+            opacity: skipOpacity, pointerEvents: "none",
+            transform: "rotate(14deg)",
+            border: "2.5px solid rgba(100,100,100,0.7)",
+            borderRadius: 8, padding: "4px 14px",
+          }}>
+            <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 18, fontWeight: 700, color: "rgba(80,80,80,0.85)", letterSpacing: "0.1em" }}>SKIP</span>
+          </div>
+
+          {/* card content */}
+          <div style={{ borderRadius: 24, overflow: "hidden", width: "100%", height: "100%", boxShadow: "0 16px 48px rgba(26,22,17,0.22)" }}>
+            {/* image */}
+            <img src={imgSrc} alt={current.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }}/>
+
+            {/* top row overlay */}
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "16px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ background: "rgba(26,22,17,0.72)", backdropFilter: "blur(6px)", borderRadius: 999, padding: "5px 12px" }}>
+                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: "#FAF7F1", letterSpacing: "0.12em" }}>● {catLabel}</span>
               </div>
-            )}
+              <div style={{ background: "rgba(250,247,241,0.18)", backdropFilter: "blur(6px)", borderRadius: 999, padding: "5px 12px" }}>
+                <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 15, color: "#FAF7F1", letterSpacing: "0.02em" }}>{PRICE_MARK[current.price_level ?? 1]}</span>
+              </div>
+            </div>
+
+            {/* bottom overlay */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(26,22,17,0.88) 0%, rgba(26,22,17,0.6) 55%, transparent 100%)", padding: "48px 18px 20px" }}>
+              <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: "rgba(250,247,241,0.55)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
+                Why this · for you
+              </div>
+              <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 30, lineHeight: 1.0, letterSpacing: "-0.02em", color: "#FAF7F1", marginBottom: 8 }}>
+                {current.name}
+              </div>
+              <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 13, lineHeight: 1.45, color: "rgba(250,247,241,0.75)", marginBottom: 12 }}>
+                {current.description}
+              </div>
+              {tags.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {tags.map(tag => (
+                    <span key={tag} style={{ background: "rgba(250,247,241,0.14)", border: "0.5px solid rgba(250,247,241,0.25)", borderRadius: 999, padding: "3px 10px", fontFamily: "var(--font-geist-sans)", fontSize: 11, color: "rgba(250,247,241,0.8)" }}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
