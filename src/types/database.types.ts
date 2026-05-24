@@ -317,7 +317,12 @@ export interface Database {
     };
 
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      is_admin_user: {
+        Args: Record<never, never>;
+        Returns: boolean;
+      };
+    };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
   };
