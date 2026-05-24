@@ -5,8 +5,9 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   Search, List, Map as MapIcon,
   Coffee, Utensils, Flame, Landmark, TreePine, Building2, Gem, Moon, ShoppingBag, Users, History, CalendarDays,
-  Star, MapPin, X, CheckCircle2,
+  Star, MapPin, X, CheckCircle2, Plus,
 } from "lucide-react";
+import Link from "next/link";
 import { markActivityDone } from "@/lib/gamification";
 import { useAuth } from "@/providers/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
@@ -361,6 +362,12 @@ export default function MapPage() {
             );
           })}
         </div>
+        {/* Discover / add activity button */}
+        {trip && (
+          <Link href="/discover" style={{ width: 44, height: 44, borderRadius: 999, background: "var(--hh-ink-900)", border: "none", display: "grid", placeItems: "center", boxShadow: "0 2px 12px rgba(26,22,17,0.25)", textDecoration: "none", flex: "0 0 auto" }}>
+            <Plus size={18} color="#FAF7F1" strokeWidth={2}/>
+          </Link>
+        )}
       </div>
 
       {/* ── Category filter chips (map view) ── */}
