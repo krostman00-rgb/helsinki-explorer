@@ -43,6 +43,14 @@ const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
 );
 
 // ── Form shape ───────────────────────────────────────────────
+const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+type DayKey = typeof DAY_KEYS[number];
+const DAY_LABEL_FI: Record<DayKey, string> = {
+  mon: "Ma", tue: "Ti", wed: "Ke", thu: "To", fri: "Pe", sat: "La", sun: "Su",
+};
+
+type DayHoursInput = { open: string; close: string; closed: boolean };
+
 type PlaceForm = {
   name: string;
   category: string;
@@ -54,26 +62,76 @@ type PlaceForm = {
   tags: string;        // comma-separated
   image_url: string;
   website: string;
+  // New optional fields
+  pricing_info: string;
+  phone: string;
+  email: string;
+  reservation_url: string;
+  hours: Record<DayKey, DayHoursInput>;
+};
+
+const EMPTY_HOURS: Record<DayKey, DayHoursInput> = {
+  mon: { open: "09:00", close: "18:00", closed: true },
+  tue: { open: "09:00", close: "18:00", closed: true },
+  wed: { open: "09:00", close: "18:00", closed: true },
+  thu: { open: "09:00", close: "18:00", closed: true },
+  fri: { open: "09:00", close: "18:00", closed: true },
+  sat: { open: "09:00", close: "18:00", closed: true },
+  sun: { open: "09:00", close: "18:00", closed: true },
 };
 
 const EMPTY_FORM: PlaceForm = {
   name: "", category: "food", lat: "", lng: "",
   address: "", description: "", price_level: "2",
   tags: "", image_url: "", website: "",
+  pricing_info: "", phone: "", email: "", reservation_url: "",
+  hours: structuredClone(EMPTY_HOURS),
 };
+
+/** Parses opening_hours JSON (whatever shape it has) back into editor state. */
+function parseHours(oh: unknown): Record<DayKey, DayHoursInput> {
+  const result: Record<DayKey, DayHoursInput> = structuredClone(EMPTY_HOURS);
+  if (!oh || typeof oh !== "object" || Array.isArray(oh)) return result;
+  const map = oh as Record<string, unknown>;
+  for (const k of DAY_KEYS) {
+    const entry = map[k];
+    if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+      const e = entry as Record<string, unknown>;
+      if (typeof e.open === "string" && typeof e.close === "string") {
+        result[k] = { open: e.open, close: e.close, closed: false };
+      }
+    }
+  }
+  return result;
+}
+
+/** Serializes editor state into the JSON shape stored in DB. Closed days omitted. */
+function hoursToJson(hours: Record<DayKey, DayHoursInput>): Record<string, { open: string; close: string }> | null {
+  const out: Record<string, { open: string; close: string }> = {};
+  for (const k of DAY_KEYS) {
+    const h = hours[k];
+    if (!h.closed && h.open && h.close) out[k] = { open: h.open, close: h.close };
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
 
 function placeToForm(p: Place): PlaceForm {
   return {
-    name:        p.name,
-    category:    p.category,
-    lat:         String(p.lat),
-    lng:         String(p.lng),
-    address:     p.address ?? "",
-    description: p.description ?? "",
-    price_level: String(p.price_level ?? 2),
-    tags:        (p.tags as string[]).join(", "),
-    image_url:   p.image_url ?? "",
-    website:     p.website ?? "",
+    name:            p.name,
+    category:        p.category,
+    lat:             String(p.lat),
+    lng:             String(p.lng),
+    address:         p.address ?? "",
+    description:     p.description ?? "",
+    price_level:     String(p.price_level ?? 2),
+    tags:            (p.tags as string[]).join(", "),
+    image_url:       p.image_url ?? "",
+    website:         p.website ?? "",
+    pricing_info:    p.pricing_info ?? "",
+    phone:           p.phone ?? "",
+    email:           p.email ?? "",
+    reservation_url: p.reservation_url ?? "",
+    hours:           parseHours(p.opening_hours),
   };
 }
 
@@ -204,16 +262,21 @@ export default function PlacesAdmin({
 
     setSaving(true);
     const payload = {
-      name:        form.name.trim(),
-      category:    form.category,
-      lat:         parseFloat(form.lat),
-      lng:         parseFloat(form.lng),
-      address:     form.address.trim() || null,
-      description: form.description.trim() || null,
-      price_level: parseInt(form.price_level),
-      tags:        form.tags.split(",").map(t => t.trim()).filter(Boolean),
-      image_url:   form.image_url.trim() || null,
-      website:     form.website.trim() || null,
+      name:            form.name.trim(),
+      category:        form.category,
+      lat:             parseFloat(form.lat),
+      lng:             parseFloat(form.lng),
+      address:         form.address.trim() || null,
+      description:     form.description.trim() || null,
+      price_level:     parseInt(form.price_level),
+      tags:            form.tags.split(",").map(t => t.trim()).filter(Boolean),
+      image_url:       form.image_url.trim() || null,
+      website:         form.website.trim() || null,
+      pricing_info:    form.pricing_info.trim() || null,
+      phone:           form.phone.trim() || null,
+      email:           form.email.trim() || null,
+      reservation_url: form.reservation_url.trim() || null,
+      opening_hours:   hoursToJson(form.hours),
     };
 
     if (editingPlace) {
@@ -573,6 +636,113 @@ export default function PlacesAdmin({
                 placeholder="https://loyly.fi"
                 className="h-10"
               />
+            </div>
+
+            {/* ── Optional contextual fields ── */}
+            <div className="sm:col-span-2 mt-3 pt-4 border-t border-border">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                Lisätiedot (vapaaehtoiset)
+              </h3>
+            </div>
+
+            {/* Pricing info (free text) */}
+            <div className="sm:col-span-2 flex flex-col gap-1.5">
+              <FieldLabel>Hinnasto-teksti</FieldLabel>
+              <Textarea
+                value={form.pricing_info}
+                onChange={e => setField("pricing_info", e.target.value)}
+                placeholder="Lounaat 12–18 €, Sisäänpääsy 16 € / lapset 8 €"
+                className="resize-none"
+                rows={2}
+              />
+            </div>
+
+            {/* Phone */}
+            <div className="flex flex-col gap-1.5">
+              <FieldLabel>Puhelin</FieldLabel>
+              <Input
+                value={form.phone}
+                onChange={e => setField("phone", e.target.value)}
+                placeholder="+358 9 1234 5678"
+                className="h-10"
+                type="tel"
+              />
+            </div>
+
+            {/* Email */}
+            <div className="flex flex-col gap-1.5">
+              <FieldLabel>Sähköposti</FieldLabel>
+              <Input
+                value={form.email}
+                onChange={e => setField("email", e.target.value)}
+                placeholder="info@loyly.fi"
+                className="h-10"
+                type="email"
+              />
+            </div>
+
+            {/* Reservation URL */}
+            <div className="sm:col-span-2 flex flex-col gap-1.5">
+              <FieldLabel>Varaus- tai lippulinkki</FieldLabel>
+              <Input
+                value={form.reservation_url}
+                onChange={e => setField("reservation_url", e.target.value)}
+                placeholder="https://loyly.fi/varaa"
+                className="h-10"
+              />
+            </div>
+
+            {/* Opening hours editor */}
+            <div className="sm:col-span-2 flex flex-col gap-1.5">
+              <FieldLabel>Aukioloajat</FieldLabel>
+              <div className="flex flex-col gap-1.5 rounded-lg border border-input p-3 bg-muted/30">
+                {DAY_KEYS.map(day => {
+                  const h = form.hours[day];
+                  return (
+                    <div key={day} className="flex items-center gap-2.5 text-sm">
+                      <span className="w-8 font-mono text-xs text-muted-foreground uppercase">
+                        {DAY_LABEL_FI[day]}
+                      </span>
+                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!h.closed}
+                          onChange={e => setForm(f => ({
+                            ...f,
+                            hours: { ...f.hours, [day]: { ...f.hours[day], closed: !e.target.checked } },
+                          }))}
+                          className="size-3.5 cursor-pointer"
+                        />
+                        Auki
+                      </label>
+                      <Input
+                        type="time"
+                        value={h.open}
+                        disabled={h.closed}
+                        onChange={e => setForm(f => ({
+                          ...f,
+                          hours: { ...f.hours, [day]: { ...f.hours[day], open: e.target.value } },
+                        }))}
+                        className="h-8 w-28 text-xs"
+                      />
+                      <span className="text-muted-foreground text-xs">–</span>
+                      <Input
+                        type="time"
+                        value={h.close}
+                        disabled={h.closed}
+                        onChange={e => setForm(f => ({
+                          ...f,
+                          hours: { ...f.hours, [day]: { ...f.hours[day], close: e.target.value } },
+                        }))}
+                        className="h-8 w-28 text-xs"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Päivät joita ei merkitä auki, näkyvät julkisella sivulla suljettuina.
+              </p>
             </div>
           </div>
 

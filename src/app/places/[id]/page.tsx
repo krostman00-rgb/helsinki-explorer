@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Place, Json } from "@/types/database.types";
+import { Phone, Mail, Ticket } from "lucide-react";
 
 // ── Opening hours helpers ─────────────────────────────────────
 const SHORT_K = ["sun","mon","tue","wed","thu","fri","sat"] as const;
@@ -331,6 +332,66 @@ export default function PlaceInfoPage() {
             <>
               <SectionHeader number={nextSection()} title="Hours"/>
               <HoursTable hours={allHours}/>
+            </>
+          )}
+
+          {/* Pricing info */}
+          {place.pricing_info && (
+            <>
+              <SectionHeader number={nextSection()} title="Pricing"/>
+              <p style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14.5, lineHeight: 1.65, color: "var(--hh-ink-700)", margin: "0 0 28px", whiteSpace: "pre-wrap" }}>
+                {place.pricing_info}
+              </p>
+            </>
+          )}
+
+          {/* Contact */}
+          {(place.phone || place.email) && (
+            <>
+              <SectionHeader number={nextSection()} title="Contact"/>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
+                {place.phone && (
+                  <a
+                    href={`tel:${place.phone.replace(/\s+/g, "")}`}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 10, fontFamily: "var(--font-geist-sans)", fontSize: 14, color: "var(--hh-ink-900)", textDecoration: "none" }}
+                  >
+                    <Phone size={14} color="var(--hh-stone-500)" strokeWidth={1.7}/>
+                    <span>{place.phone}</span>
+                  </a>
+                )}
+                {place.email && (
+                  <a
+                    href={`mailto:${place.email}`}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 10, fontFamily: "var(--font-geist-sans)", fontSize: 14, color: "var(--hh-ink-900)", textDecoration: "none" }}
+                  >
+                    <Mail size={14} color="var(--hh-stone-500)" strokeWidth={1.7}/>
+                    <span>{place.email}</span>
+                  </a>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Reservation CTA */}
+          {place.reservation_url && (
+            <>
+              <SectionHeader number={nextSection()} title="Reserve"/>
+              <a
+                href={place.reservation_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 10,
+                  padding: "12px 20px", borderRadius: 999,
+                  background: "var(--hh-ink-900)", color: "#FAF7F1",
+                  fontFamily: "var(--font-geist-sans)", fontSize: 14, fontWeight: 500,
+                  textDecoration: "none", marginBottom: 28,
+                  boxShadow: "0 2px 12px rgba(26,22,17,0.18)",
+                }}
+              >
+                <Ticket size={15} strokeWidth={1.7}/>
+                <span>Varaa / osta lippu</span>
+              </a>
             </>
           )}
 

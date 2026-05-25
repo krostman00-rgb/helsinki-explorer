@@ -61,6 +61,10 @@ export interface Database {
           tags: string[];
           opening_hours: Json | null;
           website: string | null;
+          pricing_info: string | null;
+          phone: string | null;
+          email: string | null;
+          reservation_url: string | null;
         };
         Insert: {
           id?: string;
@@ -79,6 +83,10 @@ export interface Database {
           tags?: string[];
           opening_hours?: Json | null;
           website?: string | null;
+          pricing_info?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          reservation_url?: string | null;
         };
         Update: {
           id?: string;
@@ -97,6 +105,10 @@ export interface Database {
           tags?: string[];
           opening_hours?: Json | null;
           website?: string | null;
+          pricing_info?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          reservation_url?: string | null;
         };
         Relationships: [];
       };
