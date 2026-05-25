@@ -1325,7 +1325,13 @@ export default function OnboardingPage() {
       return;
     }
 
-    await generateTripDays(supabase, data.id, durationDays, budgetLevel, interests, finalPickedIds);
+    await generateTripDays(
+      supabase, data.id, durationDays, budgetLevel, interests, finalPickedIds,
+      arrivalDate || null,
+      arrivalTime || null,
+      departureDate || null,
+      departureTime || null,
+    );
     router.push(`/trips/${data.id}`);
   };
 
