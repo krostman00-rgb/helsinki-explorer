@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -154,16 +154,13 @@ export interface UserLocation {
   lng: number;
 }
 
-export function TripMapView({
-  activities,
-  selectedIdx,
-  onMarkerClick,
-  allPlaces,
-  selectedPlaceId,
-  onPlaceClick,
-  accommodation,
-  userLocation,
-}: {
+export interface TripMapViewHandle {
+  /** Imperatively recenter the map on a coordinate. Bypasses useEffect timing
+   *  so the call wins against any other flyTo scheduled in the same tick. */
+  flyToLocation: (lat: number, lng: number, zoom?: number) => void;
+}
+
+interface TripMapViewProps {
   activities: MapActivity[];
   selectedIdx: number;
   onMarkerClick: (idx: number) => void;
@@ -172,7 +169,18 @@ export function TripMapView({
   onPlaceClick?: (place: MapPlace) => void;
   accommodation?: AccommodationMarker | null;
   userLocation?: UserLocation | null;
-}) {
+}
+
+export const TripMapView = forwardRef<TripMapViewHandle, TripMapViewProps>(function TripMapView({
+  activities,
+  selectedIdx,
+  onMarkerClick,
+  allPlaces,
+  selectedPlaceId,
+  onPlaceClick,
+  accommodation,
+  userLocation,
+}, forwardedRef) {
   const containerRef      = useRef<HTMLDivElement>(null);
   const mapRef            = useRef<maplibregl.Map | null>(null);
   const stayMarkerRef     = useRef<maplibregl.Marker | null>(null);
@@ -408,7 +416,10 @@ export function TripMapView({
     else map.once("load", addStay);
   }, [accommodation]);
 
-  // ── User location ("you are here") marker ──
+  // ── User location ("you are here") marker — JUST marker, no flyTo ──
+  // The flyTo is triggered imperatively via forwardedRef.flyToLocation()
+  // to avoid race conditions with the trip activity effects that re-fire
+  // on every render (because `activities` is a new array reference).
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -419,7 +430,6 @@ export function TripMapView({
 
       if (!userLocation?.lat || !userLocation?.lng) return;
 
-      // Inject pulse animation once into <head>
       if (!document.getElementById("hh-gps-pulse")) {
         const s = document.createElement("style");
         s.id = "hh-gps-pulse";
@@ -442,17 +452,29 @@ export function TripMapView({
       userMarkerRef.current = new maplibregl.Marker({ element: wrap, anchor: "center" })
         .setLngLat([userLocation.lng, userLocation.lat])
         .addTo(map);
-
-      map.flyTo({
-        center: [userLocation.lng, userLocation.lat],
-        zoom: Math.max(map.getZoom(), 15),
-        duration: 800,
-      });
     };
 
     if (map.isStyleLoaded()) addUserMarker();
     else map.once("load", addUserMarker);
   }, [userLocation]);
 
+  // ── Imperative handle: lets parent fly map AFTER React effects settle ──
+  useImperativeHandle(forwardedRef, () => ({
+    flyToLocation: (lat: number, lng: number, zoom = 15) => {
+      const map = mapRef.current;
+      if (!map) return;
+      const doFly = () => map.flyTo({
+        center: [lng, lat],
+        zoom,
+        duration: 900,
+        essential: true,
+      });
+      // Schedule on the NEXT animation frame so any pending
+      // useEffect-driven flyTo/fitBounds calls fire first and we win.
+      if (map.isStyleLoaded()) requestAnimationFrame(doFly);
+      else map.once("load", () => requestAnimationFrame(doFly));
+    },
+  }), []);
+
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }}/>;
-}
+});

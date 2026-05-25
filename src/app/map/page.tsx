@@ -11,7 +11,7 @@ import { markActivityDone } from "@/lib/gamification";
 import { useAuth } from "@/providers/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
 import type { Trip, TripDay, TripActivity, Place } from "@/types/database.types";
-import type { MapActivity, MapPlace, AccommodationMarker, UserLocation } from "@/components/TripMapView";
+import type { MapActivity, MapPlace, AccommodationMarker, UserLocation, TripMapViewHandle } from "@/components/TripMapView";
 import type { TransitResult } from "@/lib/transit";
 import { TransitConnector } from "@/components/TransitConnector";
 
@@ -99,11 +99,14 @@ export default function MapPage() {
   const [accommodation, setAccommodation] = useState<AccommodationMarker | null>(null);
   const [userLocation, setUserLocation]   = useState<UserLocation | null>(null);
   const [locating, setLocating]           = useState(false);
-  const watchIdRef = useRef<number | null>(null);
+  const watchIdRef    = useRef<number | null>(null);
+  const watchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapViewRef    = useRef<TripMapViewHandle>(null);
 
   // Clean up watchPosition on unmount
   useEffect(() => () => {
     if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+    if (watchTimerRef.current) clearTimeout(watchTimerRef.current);
   }, []);
 
   const cardsRef  = useRef<HTMLDivElement>(null);
@@ -163,12 +166,6 @@ export default function MapPage() {
   const activities: ActivityWithPlace[] = currentDay?.trip_activities ?? [];
   const validActivities = activities.filter(a => a.places?.lat && a.places?.lng);
 
-  const mapActivities: MapActivity[] = validActivities.map(a => ({
-    id: a.id,
-    completed: a.completed ?? false,
-    places: a.places ? { category: a.places.category, lat: a.places.lat, lng: a.places.lng } : null,
-  }));
-
   const filteredPlaces = useMemo(
     () => filterCat === "all" ? allPlaces : allPlaces.filter(p => p.category === filterCat),
     [allPlaces, filterCat]
@@ -178,6 +175,20 @@ export default function MapPage() {
   const activitiesKey = useMemo(
     () => validActivities.map(a => `${a.id}:${a.places?.lat},${a.places?.lng}`).join("|"),
     [validActivities]
+  );
+
+  // CRITICAL: stable reference so TripMapView's effects don't refire on every render.
+  // Without this, the activities/flyTo effects in TripMapView re-run on every state
+  // change (incl. each watchPosition tick), repeatedly calling fitBounds() to the
+  // trip area and overriding the user-location flyTo.
+  const mapActivities = useMemo<MapActivity[]>(
+    () => validActivities.map(a => ({
+      id: a.id,
+      completed: a.completed ?? false,
+      places: a.places ? { category: a.places.category, lat: a.places.lat, lng: a.places.lng } : null,
+    })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activitiesKey],
   );
 
   useEffect(() => {
@@ -255,6 +266,7 @@ export default function MapPage() {
       {view === "map" && (
         <div style={{ position: "absolute", inset: 0 }}>
           <TripMapView
+            ref={mapViewRef}
             activities={mapActivities}
             selectedIdx={selectedIdx}
             onMarkerClick={handleMarkerClick}
@@ -353,44 +365,84 @@ export default function MapPage() {
               setTimeout(() => setToast(null), 3000);
               return;
             }
-            // Stop any previous watch
+            // Stop any in-flight watch
             if (watchIdRef.current !== null) {
               navigator.geolocation.clearWatch(watchIdRef.current);
               watchIdRef.current = null;
             }
+            if (watchTimerRef.current) {
+              clearTimeout(watchTimerRef.current);
+              watchTimerRef.current = null;
+            }
+
             setLocating(true);
-            // watchPosition keeps refining the fix until GPS accuracy ≤ 80 m
+
+            // Track the best (lowest accuracy = most precise) fix we've seen
+            let best: { lat: number; lng: number; accuracy: number } | null = null;
+
+            const finish = (reason: "accurate" | "timeout" | "error", errMsg?: string) => {
+              if (watchIdRef.current !== null) {
+                navigator.geolocation.clearWatch(watchIdRef.current);
+                watchIdRef.current = null;
+              }
+              if (watchTimerRef.current) {
+                clearTimeout(watchTimerRef.current);
+                watchTimerRef.current = null;
+              }
+              setLocating(false);
+
+              if (reason === "error") {
+                setToast(errMsg ?? "Sijainnin haku epäonnistui");
+                setTimeout(() => setToast(null), 4000);
+                return;
+              }
+              if (!best) {
+                setToast("Sijaintia ei voitu määrittää");
+                setTimeout(() => setToast(null), 4000);
+                return;
+              }
+              // Commit best fix and fly map IMPERATIVELY (next frame, after effects)
+              setUserLocation({ lat: best.lat, lng: best.lng });
+              mapViewRef.current?.flyToLocation(best.lat, best.lng, 15.5);
+              const accStr = best.accuracy < 1000
+                ? `± ${Math.round(best.accuracy)} m`
+                : `± ${(best.accuracy / 1000).toFixed(1)} km`;
+              const prefix = reason === "accurate" ? "📍 Sijainti löydetty" : "📍 Paras saatu";
+              setToast(`${prefix} · ${accStr}`);
+              setTimeout(() => setToast(null), 3500);
+            };
+
+            // 12-second hard cap — accept best fix even if accuracy never gets great
+            watchTimerRef.current = setTimeout(() => finish("timeout"), 12000);
+
             watchIdRef.current = navigator.geolocation.watchPosition(
               (pos) => {
                 const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-                setUserLocation({ lat, lng });
+
+                // Keep the most precise reading
+                if (!best || accuracy < best.accuracy) {
+                  best = { lat, lng, accuracy };
+                  // Live update — show progress to user
+                  setUserLocation({ lat, lng });
+                  mapViewRef.current?.flyToLocation(lat, lng, 15.5);
+                }
+
                 const accStr = accuracy < 1000
                   ? `± ${Math.round(accuracy)} m`
                   : `± ${(accuracy / 1000).toFixed(1)} km`;
-                setToast(`📍 ${accStr} — haetaan tarkempaa…`);
-                // Good enough GPS fix — stop watching
-                if (accuracy <= 80) {
-                  navigator.geolocation.clearWatch(watchIdRef.current!);
-                  watchIdRef.current = null;
-                  setLocating(false);
-                  setToast(`📍 Sijainti löydetty · ${accStr}`);
-                  setTimeout(() => setToast(null), 3000);
-                }
+                setToast(`📍 ${accStr} — tarkennetaan…`);
+
+                // GPS-level accuracy reached — done
+                if (accuracy <= 100) finish("accurate");
               },
               (err) => {
-                if (watchIdRef.current !== null) {
-                  navigator.geolocation.clearWatch(watchIdRef.current);
-                  watchIdRef.current = null;
-                }
-                setLocating(false);
                 const msg =
                   err.code === 1 ? "Salli sijaintilupa selaimen asetuksista" :
                   err.code === 2 ? "Sijaintia ei voitu määrittää" :
                   "Sijainnin haku aikakatkaistiin";
-                setToast(msg);
-                setTimeout(() => setToast(null), 4000);
+                finish("error", msg);
               },
-              { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+              { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
             );
           }}
           style={{
