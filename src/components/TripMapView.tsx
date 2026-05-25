@@ -442,6 +442,12 @@ export function TripMapView({
       userMarkerRef.current = new maplibregl.Marker({ element: wrap, anchor: "center" })
         .setLngLat([userLocation.lng, userLocation.lat])
         .addTo(map);
+
+      map.flyTo({
+        center: [userLocation.lng, userLocation.lat],
+        zoom: Math.max(map.getZoom(), 15),
+        duration: 800,
+      });
     };
 
     if (map.isStyleLoaded()) addUserMarker();
