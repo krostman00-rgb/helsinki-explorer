@@ -342,15 +342,31 @@ export default function MapPage() {
         {/* GPS locate button */}
         <button
           onClick={() => {
-            if (!navigator.geolocation) return;
+            if (!navigator.geolocation) {
+              setToast("Sijaintipalvelut eivät ole käytettävissä");
+              setTimeout(() => setToast(null), 3000);
+              return;
+            }
             setLocating(true);
             navigator.geolocation.getCurrentPosition(
               (pos) => {
-                setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                setUserLocation({ lat, lng });
                 setLocating(false);
+                setToast(`📍 Sijainti löydetty · ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                setTimeout(() => setToast(null), 4000);
               },
-              () => setLocating(false),
-              { enableHighAccuracy: true, timeout: 8000 },
+              (err) => {
+                setLocating(false);
+                const msg =
+                  err.code === 1 ? "Salli sijaintilupa selaimen asetuksista" :
+                  err.code === 2 ? "Sijaintia ei voitu määrittää" :
+                  "Sijainnin haku aikakatkaistiin";
+                setToast(msg);
+                setTimeout(() => setToast(null), 4000);
+              },
+              { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
             );
           }}
           style={{
