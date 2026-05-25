@@ -121,9 +121,9 @@ function DurationSlider({ value, onChange }: { value: number; onChange: (n: numb
 function StepDuration({ value, onChange, onNext, onBack }: { value: number; onChange: (n: number) => void; onNext: () => void; onBack?: () => void }) {
   const previews = DAY_PREVIEWS[value] ?? DAY_PREVIEWS[3];
   return (
-    <OnbChrome step={2} total={4} onBack={onBack} cta={<CtaPrimary onClick={onNext}>Continue <Arrow/></CtaPrimary>}>
+    <OnbChrome step={1} total={4} onBack={onBack} cta={<CtaPrimary onClick={onNext}>Continue <Arrow/></CtaPrimary>}>
       <div style={{ padding: "0 24px" }}>
-        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 02 · The shape of it</div>
+        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 01 · The shape of it</div>
         <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
           How many days<br/><span style={{ fontStyle: "italic" }}>with us?</span>
         </div>
@@ -200,7 +200,7 @@ function BudgetSlider({ value, onChange }: { value: number; onChange: (n: number
 function StepBudget({ value, onChange, onNext, onBack }: { value: number; onChange: (n: number) => void; onNext: () => void; onBack: () => void }) {
   const tier = BUDGET_TIERS[value - 1];
   return (
-    <OnbChrome step={3} total={4} onBack={onBack} cta={
+    <OnbChrome step={2} total={4} onBack={onBack} cta={
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={onBack} style={{ flex: "0 0 auto", width: 60, height: 60, borderRadius: 28, border: "1px solid var(--hh-linen-300)", background: "transparent", display: "grid", placeItems: "center", cursor: "pointer" }}>
           <ChevronLeft size={20} color="var(--hh-ink-900)" strokeWidth={1.6}/>
@@ -209,7 +209,7 @@ function StepBudget({ value, onChange, onNext, onBack }: { value: number; onChan
       </div>
     }>
       <div style={{ padding: "0 24px" }}>
-        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 03 · Money talk</div>
+        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 02 · Money talk</div>
         <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
           Pick your <span style={{ fontStyle: "italic" }}>tempo.</span>
         </div>
@@ -444,9 +444,8 @@ function StepDiscover({
     ? "none"
     : "transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.22s ease";
 
-  // Stamp opacities
+  // Stamp opacity (ADD direction only)
   const likeOpacity = Math.min(1, Math.max(0, (dragX - 25) / 55));
-  const skipOpacity = Math.min(1, Math.max(0, (-dragX - 25) / 55));
 
   // Back card scale interpolation based on drag progress
   const dragProgress = Math.min(1, Math.abs(dragX) / 120);
@@ -459,14 +458,23 @@ function StepDiscover({
       <div style={{ position: "fixed", inset: 0, opacity: 0.5, pointerEvents: "none", backgroundImage: "radial-gradient(rgba(58,52,43,0.045) 1px, transparent 1px)", backgroundSize: "3px 3px", zIndex: 0 }}/>
 
       {/* header row */}
-      <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+      <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "var(--hh-stone-400)", letterSpacing: "0.14em", textTransform: "uppercase" }}>
           hello·hel · curated · round {String(round).padStart(2, "0")}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--hh-ink-900)", borderRadius: 999, padding: "5px 12px" }}>
-          <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 1C4.34 1 3 2.34 3 4c0 2.5 3 7 3 7s3-4.5 3-7c0-1.66-1.34-3-3-3z" fill="#FAF7F1"/></svg>
-          <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "var(--hh-linen-50)", letterSpacing: "0.08em", fontWeight: 600 }}>{String(picked.length).padStart(2, "0")} on list</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.1em" }}>04 / 04</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--hh-ink-900)", borderRadius: 999, padding: "5px 12px" }}>
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 1C4.34 1 3 2.34 3 4c0 2.5 3 7 3 7s3-4.5 3-7c0-1.66-1.34-3-3-3z" fill="#FAF7F1"/></svg>
+            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "var(--hh-linen-50)", letterSpacing: "0.08em", fontWeight: 600 }}>{String(picked.length).padStart(2, "0")} on list</span>
+          </div>
         </div>
+      </div>
+      {/* progress bar */}
+      <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 4, marginBottom: 12 }}>
+        {[0,1,2,3].map(i => (
+          <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: "var(--hh-ink-900)" }}/>
+        ))}
       </div>
 
       {/* headline */}
@@ -523,16 +531,6 @@ function StepDiscover({
             <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 18, fontWeight: 700, color: "var(--hh-copper-600)", letterSpacing: "0.1em" }}>ADD ♥</span>
           </div>
 
-          {/* SKIP stamp — appears when dragging left */}
-          <div style={{
-            position: "absolute", top: 22, right: 18, zIndex: 10,
-            opacity: skipOpacity, pointerEvents: "none",
-            transform: "rotate(14deg)",
-            border: "2.5px solid rgba(100,100,100,0.7)",
-            borderRadius: 8, padding: "4px 14px",
-          }}>
-            <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 18, fontWeight: 700, color: "rgba(80,80,80,0.85)", letterSpacing: "0.1em" }}>SKIP</span>
-          </div>
 
           {/* card content — position:relative so absolute overlays are clipped by overflow:hidden */}
           <div style={{ position: "relative", borderRadius: 24, overflow: "hidden", width: "100%", height: "100%", boxShadow: "0 16px 48px rgba(26,22,17,0.22)" }}>
@@ -589,9 +587,6 @@ function StepDiscover({
           <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 15, fontWeight: 500, color: "#FAF7F1" }}>Add to list</span>
         </button>
 
-        <button onClick={() => advance(true)} style={{ width: 52, height: 52, borderRadius: 999, background: "var(--hh-linen-50)", border: "0.5px solid var(--hh-linen-300)", display: "grid", placeItems: "center", cursor: "pointer" }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 13.5S2 9.5 2 5.5a3.5 3.5 0 017 0 3.5 3.5 0 017 0c0 4-6 8-6 8z" stroke="var(--hh-stone-500)" strokeWidth="1.3"/></svg>
-        </button>
       </div>
 
       {errorMessage && (
@@ -662,7 +657,7 @@ function StepInterests({ value, onChange, onNext, isSubmitting, onBack }: { valu
       </div>
     }>
       <div style={{ padding: "0 24px" }}>
-        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 04 · Your hand</div>
+        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 03 · Your hand</div>
         <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
           What pulls you<br/><span style={{ fontStyle: "italic" }}>to a city?</span>
         </div>

@@ -63,45 +63,51 @@ function pad2(n: number) { return String(n).padStart(2, "0"); }
 function PassportStamp({ name, category }: { name: string; category: string }) {
   const color   = CAT_COLOR[category] ?? "#B5A992";
   const iconSvg = CAT_ICON[category] ?? CAT_ICON.design;
-  const size    = 72;
-  const r       = 32;
+  const size    = 88;
+  const r       = 38;
   const cx      = size / 2;
   const cy      = size / 2;
-  const rimText = (category.toUpperCase() + " · ").repeat(4);
+  const rimText = (category.toUpperCase() + " · ").repeat(5);
 
   return (
-    <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+    <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, width: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <defs>
           <path id={`rim-${category}-${name.slice(0,3)}`} d={`M ${cx},${cy} m -${r},0 a ${r},${r} 0 1,1 ${r * 2},0 a ${r},${r} 0 1,1 -${r * 2},0`}/>
         </defs>
         {/* Outer ring */}
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="1.2" opacity="0.85"/>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="1.5" opacity="0.85"/>
         {/* Inner ring */}
-        <circle cx={cx} cy={cy} r={r - 6} fill="none" stroke={color} strokeWidth="0.6" opacity="0.45"/>
+        <circle cx={cx} cy={cy} r={r - 7} fill="none" stroke={color} strokeWidth="0.7" opacity="0.45"/>
         {/* Rim text */}
-        <text fontSize="5" fill={color} fontFamily="var(--font-geist-mono)" letterSpacing="1.5" opacity="0.6">
+        <text fontSize="5.5" fill={color} fontFamily="var(--font-geist-mono)" letterSpacing="1.5" opacity="0.6">
           <textPath href={`#rim-${category}-${name.slice(0,3)}`} startOffset="0%">
             {rimText}
           </textPath>
         </text>
         {/* Icon in center */}
-        <g transform={`translate(${cx - 9}, ${cy - 14})`} color={color}>
-          <svg width="18" height="18" viewBox="0 0 24 24" dangerouslySetInnerHTML={{ __html: iconSvg }}/>
+        <g transform={`translate(${cx - 10}, ${cy - 10})`} color={color}>
+          <svg width="20" height="20" viewBox="0 0 24 24" dangerouslySetInnerHTML={{ __html: iconSvg }}/>
         </g>
-        {/* Place name */}
-        <text
-          x={cx} y={cy + 13}
-          textAnchor="middle"
-          fontSize="6.5"
-          fontFamily="var(--font-geist-mono)"
-          fontWeight="600"
-          fill={color}
-          letterSpacing="0.06em"
-        >
-          {name.length > 12 ? name.slice(0, 11) + "…" : name}
-        </text>
       </svg>
+      {/* Place name below stamp — up to 2 lines, no truncation with "..." forced */}
+      <div style={{
+        fontFamily: "var(--font-geist-mono)",
+        fontSize: 9,
+        fontWeight: 600,
+        color,
+        letterSpacing: "0.04em",
+        textAlign: "center",
+        lineHeight: 1.35,
+        width: size,
+        display: "-webkit-box",
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"],
+        overflow: "hidden",
+        wordBreak: "break-word",
+      }}>
+        {name}
+      </div>
     </div>
   );
 }
@@ -375,13 +381,11 @@ export default function PassportPage() {
               <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 20, color: "#1A1611" }}>Recent stamps</span>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 0, overflowX: "auto", scrollbarWidth: "none", padding: "4px 20px 4px" }}>
-            {stamps.map((s, i) => (
-              <div key={s.id} style={{ marginLeft: i === 0 ? 0 : -14, zIndex: stamps.length - i }}>
-                <PassportStamp name={s.name} category={s.category}/>
-              </div>
+          <div style={{ display: "flex", gap: 12, overflowX: "auto", scrollbarWidth: "none", padding: "4px 20px 8px" }}>
+            {stamps.map(s => (
+              <PassportStamp key={s.id} name={s.name} category={s.category}/>
             ))}
-            <div style={{ flex: "0 0 8px" }}/>
+            <div style={{ flex: "0 0 4px" }}/>
           </div>
         </div>
       )}
@@ -406,7 +410,10 @@ export default function PassportPage() {
               >
                 <span style={{ fontSize: 22, flex: "0 0 auto", filter: isUnlocked ? "none" : "grayscale(1)" }}>{a.icon}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 16, color: "#1A1611", lineHeight: 1.2 }}>{a.title}</div>
+                  <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 16, color: "#1A1611", lineHeight: 1.2, fontStyle: "italic" }}>{a.title}</div>
+                  {a.title !== a.titleFi && (
+                    <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 11, color: "#A09880", marginTop: 1 }}>{a.titleFi}</div>
+                  )}
                   {!isUnlocked && prog.total > 1 && (
                     <div style={{ marginTop: 5, height: 2, background: "#DDD8CE", borderRadius: 999, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${(prog.current / prog.total) * 100}%`, background: "#3F5A45", borderRadius: 999 }}/>

@@ -23,7 +23,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
   {
     key: "cafe_5",
     title: "Aamukahvi",
-    titleFi: "Aamukahvi",
+    titleFi: "Morning Coffee",
     hint: "Visit 5 cafés. The cinnamon bun life chose you.",
     icon: "☕", points: 100, category: "food",
   },

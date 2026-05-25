@@ -3,22 +3,22 @@
 import { Footprints } from "lucide-react";
 import { getModeColor, getModeLabel, type TransitResult, type TransitLeg } from "@/lib/transit";
 
-// ── Inline SVG icons (small, sharp) ───────────────────────────
-const TramIcon   = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="6" y="3" width="12" height="14" rx="2" fill="white"/><circle cx="9" cy="20" r="1.5" fill="white"/><circle cx="15" cy="20" r="1.5" fill="white"/></svg>;
-const MetroIcon  = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 4l7 8 7-8M5 20l7-8 7 8" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const BusIcon    = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="12" rx="2" fill="white"/><circle cx="8" cy="20" r="1.5" fill="white"/><circle cx="16" cy="20" r="1.5" fill="white"/></svg>;
-const RailIcon   = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="14" rx="3" fill="white"/><path d="M5 11h14" stroke="currentColor" strokeWidth="1.2"/></svg>;
-const FerryIcon  = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M3 15l1.5-4h15L21 15M5 11V7h6V5h2v2h6v4" stroke="white" strokeWidth="1.5" strokeLinejoin="round" fill="none"/></svg>;
+// ── Official HSL mode icons ────────────────────────────────────
+const HSL_ICONS: Record<string, string> = {
+  BUS:    "/icons/hsl-bus.svg",
+  SUBWAY: "/icons/hsl-metro.svg",
+  TRAM:   "/icons/hsl-tram.svg",
+  RAIL:   "/icons/hsl-rail.svg",
+  FERRY:  "/icons/hsl-ferry.svg",
+};
 
-function ModeGlyph({ mode }: { mode: string }) {
-  switch (mode) {
-    case "TRAM":   return <TramIcon/>;
-    case "SUBWAY": return <MetroIcon/>;
-    case "BUS":    return <BusIcon/>;
-    case "RAIL":   return <RailIcon/>;
-    case "FERRY":  return <FerryIcon/>;
-    default:       return null;
-  }
+function ModeIcon({ mode }: { mode: string }) {
+  const src = HSL_ICONS[mode];
+  if (!src) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt={mode} width={18} height={18} style={{ display: "block", flex: "0 0 auto" }}/>
+  );
 }
 
 // ── A single leg row ──────────────────────────────────────────
@@ -41,10 +41,16 @@ function LegRow({ leg }: { leg: TransitLeg }) {
 
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 6, padding: "2px 0" }}>
-      {/* Colored mode badge with line number */}
-      <div style={{ display: "flex", alignItems: "center", gap: 3, background: color, color: "#FFF", borderRadius: 4, padding: "1px 4px", height: 18, flex: "0 0 auto", boxShadow: "0 1px 2px rgba(0,0,0,0.12)" }}>
-        <ModeGlyph mode={leg.mode}/>
-        <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.02em", lineHeight: 1 }}>
+      {/* HSL official icon + line number badge */}
+      <div style={{ display: "flex", alignItems: "center", gap: 3, flex: "0 0 auto" }}>
+        <ModeIcon mode={leg.mode}/>
+        <span style={{
+          fontFamily: "var(--font-geist-sans)", fontSize: 10.5, fontWeight: 700,
+          letterSpacing: "0.02em", lineHeight: 1,
+          background: color, color: "#FFF",
+          borderRadius: 3, padding: "2px 4px",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.12)",
+        }}>
           {label}
         </span>
       </div>

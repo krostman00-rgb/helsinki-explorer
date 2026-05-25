@@ -8,13 +8,13 @@ import {
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import type { DropResult, DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import type { Trip, TripDay, TripActivity, Place } from "@/types/database.types";
+import type { Trip, TripDay, TripActivity, Place, Json } from "@/types/database.types";
 
 interface ActivityWithPlace extends TripActivity {
-  places: Pick<Place, "name" | "category" | "address" | "description" | "lat" | "lng"> | null;
+  places: Pick<Place, "name" | "category" | "address" | "description" | "lat" | "lng" | "image_url" | "tags" | "price_level" | "rating" | "website" | "opening_hours"> | null;
 }
 interface DayWithActivities extends TripDay {
   trip_activities: ActivityWithPlace[];
@@ -35,6 +35,38 @@ const CATEGORY_COLOR: Record<string, string> = {
   museums: "#133A5B", history: "#133A5B", arch: "#133A5B",
   design: "#1A1611", night: "#C99544", events: "#C99544",
 };
+
+const PRICE_MARK: Record<number, string> = { 1: "€", 2: "€€", 3: "€€€" };
+
+// ── Opening hours helpers ──────────────────────────────────────
+function getTodayHours(opening_hours: Json | null): { open: string; close: string } | null {
+  if (!opening_hours || typeof opening_hours !== "object" || Array.isArray(opening_hours)) return null;
+  const h = opening_hours as Record<string, unknown>;
+  const day = new Date().getDay();
+  const shortK = ["sun","mon","tue","wed","thu","fri","sat"];
+  const longK  = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+  for (const key of [shortK[day], longK[day], String(day), String(day + 1)]) {
+    if (!key) continue;
+    const val = h[key];
+    if (!val) continue;
+    if (typeof val === "object" && !Array.isArray(val)) {
+      const v = val as Record<string, unknown>;
+      if (typeof v.open === "string" && typeof v.close === "string") return { open: v.open, close: v.close };
+    }
+    if (typeof val === "string") {
+      const m = val.match(/^(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})$/);
+      if (m && m[1] && m[2]) return { open: m[1], close: m[2] };
+    }
+  }
+  return null;
+}
+
+function isOpenNow(hours: { open: string; close: string }): boolean {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const parse = (t: string) => { const [h, m] = t.split(":").map(Number); return (h ?? 0) * 60 + (m ?? 0); };
+  return nowMin >= parse(hours.open) && nowMin < parse(hours.close);
+}
 
 const CATEGORY_ICON: Record<string, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>> = {
   cafe:    Coffee,
@@ -71,11 +103,12 @@ function isNow(index: number): boolean {
   return nowMin >= slotMin && nowMin < slotMin + 110;
 }
 
-function ActivityCard({ activity, index, onToggle, dragHandleProps }: {
+function ActivityCard({ activity, index, onToggle, dragHandleProps, onInfoClick }: {
   activity: ActivityWithPlace;
   index: number;
   onToggle: (id: string, completed: boolean) => void;
   dragHandleProps?: DraggableProvidedDragHandleProps | null;
+  onInfoClick?: () => void;
 }) {
   const time     = TIME_SLOTS[index] ?? "";
   const cat      = activity.places?.category ?? "";
@@ -88,17 +121,21 @@ function ActivityCard({ activity, index, onToggle, dragHandleProps }: {
     : mins ? `${mins} MIN` : "";
 
   return (
-    <div style={{
-      borderRadius: 18,
-      background: now ? "var(--hh-ink-900)" : "var(--hh-linen-50)",
-      border: now ? "none" : "0.5px solid var(--hh-linen-300)",
-      padding: "14px 16px 16px",
-      opacity: activity.completed ? 0.55 : 1,
-      transition: "opacity 0.2s",
-      display: "flex",
-      alignItems: "stretch",
-      gap: 0,
-    }}>
+    <div
+      onClick={onInfoClick}
+      style={{
+        borderRadius: 18,
+        background: now ? "var(--hh-ink-900)" : "var(--hh-linen-50)",
+        border: now ? "none" : "0.5px solid var(--hh-linen-300)",
+        padding: "14px 16px 16px",
+        opacity: activity.completed ? 0.55 : 1,
+        transition: "opacity 0.2s",
+        display: "flex",
+        alignItems: "stretch",
+        gap: 0,
+        cursor: onInfoClick ? "pointer" : "default",
+      }}
+    >
       {/* drag handle */}
       <div
         {...(dragHandleProps ?? {})}
@@ -121,7 +158,7 @@ function ActivityCard({ activity, index, onToggle, dragHandleProps }: {
               NOW
             </div>
           )}
-          <button onClick={() => onToggle(activity.id, !activity.completed)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 4 }}>
+          <button onClick={e => { e.stopPropagation(); onToggle(activity.id, !activity.completed); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 4 }}>
             {activity.completed ? (
               <>
                 <CircleCheck size={16} color={now ? "#FAF7F1" : "#3F5A45"} strokeWidth={1.5}/>
@@ -152,6 +189,35 @@ function ActivityCard({ activity, index, onToggle, dragHandleProps }: {
           <div style={{ fontSize: 12.5, lineHeight: 1.4, color: now ? "rgba(250,247,241,0.55)" : "var(--hh-stone-500)" }}>
             {activity.description ?? activity.places?.address ?? ""}
           </div>
+          {/* Opening hours today */}
+          {(() => {
+            const hours = getTodayHours(activity.places?.opening_hours ?? null);
+            if (!hours) return null;
+            const open = isOpenNow(hours);
+            // Check if planned time is before opening
+            const slot = TIME_SLOTS[index];
+            let earlyWarning = false;
+            if (slot) {
+              const [sh, sm] = slot.split(":").map(Number);
+              const [oh, om] = hours.open.split(":").map(Number);
+              earlyWarning = (sh ?? 0) * 60 + (sm ?? 0) < (oh ?? 0) * 60 + (om ?? 0);
+            }
+            if (earlyWarning) {
+              return (
+                <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ fontSize: 11, color: now ? "rgba(201,149,68,0.9)" : "var(--hh-amber-500)" }}>⚠ Opens at {hours.open} – consider arriving later</span>
+                </div>
+              );
+            }
+            return (
+              <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 5 }}>
+                <div style={{ width: 5, height: 5, borderRadius: 999, background: open ? (now ? "rgba(110,138,110,0.9)" : "#3F5A45") : (now ? "rgba(182,90,55,0.8)" : "#B65A37"), flex: "0 0 auto" }}/>
+                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: now ? "rgba(250,247,241,0.45)" : "var(--hh-stone-400)", letterSpacing: "0.04em" }}>
+                  {open ? `Open until ${hours.close}` : `Opens ${hours.open}`}
+                </span>
+              </div>
+            );
+          })()}
         </div>
       </div>
       </div>{/* end inner flex content */}
@@ -452,11 +518,12 @@ function AchievementToast({ icon, title, points }: { icon: string; title: string
 
 export default function TripDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const [trip, setTrip]           = useState<Trip | null>(null);
   const [days, setDays]           = useState<DayWithActivities[]>([]);
   const [activeDayIdx, setActive] = useState(0);
   const [isLoading, setLoading]   = useState(true);
-  const [showAddSheet, setShowAddSheet]       = useState(false);
+  const [showAddSheet, setShowAddSheet]         = useState(false);
   const [achievementToast, setAchievementToast] = useState<{ icon: string; title: string; points: number } | null>(null);
 
   const checkAchievements = useCallback((updatedDays: DayWithActivities[]) => {
@@ -488,7 +555,7 @@ export default function TripDetailPage() {
       supabase.from("trips").select("*").eq("id", params.id).single(),
       supabase
         .from("trip_days")
-        .select("*, trip_activities(*, places(name, category, address, description, lat, lng))")
+        .select("*, trip_activities(*, places(name, category, address, description, lat, lng, image_url, tags, price_level, rating, website, opening_hours))")
         .eq("trip_id", params.id)
         .order("day_number"),
     ]).then(([tripRes, daysRes]) => {
@@ -621,6 +688,7 @@ export default function TripDetailPage() {
                             index={i}
                             onToggle={toggleActivity}
                             dragHandleProps={provided.dragHandleProps}
+                            onInfoClick={act.place_id ? () => router.push(`/places/${act.place_id}`) : undefined}
                           />
                           {i < activities.length - 1 && !snapshot.isDragging && (
                             <Connector from={act} to={activities[i + 1]} fromIndex={i}/>
