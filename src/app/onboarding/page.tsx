@@ -258,12 +258,6 @@ function StepArrivalDeparture({
 }: StepArrivalProps) {
   const [activeCard, setActiveCard] = useState<"arrival" | "departure">("arrival");
 
-  // Hidden input refs
-  const arrDateRef  = useRef<HTMLInputElement>(null);
-  const arrTimeRef  = useRef<HTMLInputElement>(null);
-  const depDateRef  = useRef<HTMLInputElement>(null);
-  const depTimeRef  = useRef<HTMLInputElement>(null);
-
   const nights = arrivalDate && departureDate
     ? Math.max(0, differenceInCalendarDays(parseISO(departureDate), parseISO(arrivalDate)))
     : null;
@@ -277,7 +271,6 @@ function StepArrivalDeparture({
     onChangeArrivalTime(`${hh}:00`);
   }
 
-  // Keep departure >= arrival
   function handleArrivalDateChange(val: string) {
     onChangeArrivalDate(val);
     if (departureDate && val >= departureDate) {
@@ -286,6 +279,14 @@ function StepArrivalDeparture({
       onChangeDepartureDate(format(d, "yyyy-MM-dd"));
     }
   }
+
+  // Shared style for invisible-but-interactive native inputs
+  const inputOverlay: React.CSSProperties = {
+    position: "absolute", inset: 0,
+    opacity: 0, cursor: "pointer",
+    width: "100%", height: "100%",
+    WebkitAppearance: "none",
+  };
 
   const canContinue = !!arrivalDate && !!arrivalTime && !!departureDate && !!departureTime;
 
@@ -310,36 +311,55 @@ function StepArrivalDeparture({
       {/* Date cards */}
       <div style={{ padding: "28px 24px 0", display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 10, alignItems: "center" }}>
 
-        {/* Arrival card */}
+        {/* ── Arrival card ── */}
         <div
-          onClick={() => { setActiveCard("arrival"); arrDateRef.current?.showPicker?.(); arrDateRef.current?.click(); }}
-          style={{ position: "relative", borderRadius: 20, border: activeCard === "arrival" ? "2px solid #C1693A" : "0.5px solid var(--hh-linen-300)", background: "var(--hh-linen-50)", padding: "16px 16px 14px", cursor: "pointer", overflow: "hidden" }}
+          style={{ position: "relative", borderRadius: 20, border: activeCard === "arrival" ? "2px solid #C1693A" : "0.5px solid var(--hh-linen-300)", background: "var(--hh-linen-50)", overflow: "hidden" }}
         >
-          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, letterSpacing: "0.16em", color: activeCard === "arrival" ? "#C1693A" : "var(--hh-stone-400)", textTransform: "uppercase", marginBottom: 8, fontWeight: 600 }}>Arrival</div>
-          {arrivalDate ? (() => {
-            const { day, num, month } = formatDateCard(arrivalDate);
-            return (
-              <>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
-                  <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.06em" }}>{day}</span>
-                  <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 44, lineHeight: 0.9, color: "var(--hh-ink-900)", letterSpacing: "-0.03em" }}>{num}</span>
-                </div>
-                <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, fontStyle: "italic", color: "var(--hh-ink-700)", marginBottom: 10 }}>{month}</div>
-              </>
-            );
-          })() : (
-            <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, fontStyle: "italic", color: "var(--hh-stone-400)", marginBottom: 10, marginTop: 4 }}>Pick date</div>
-          )}
-          <div style={{ borderTop: "0.5px dashed var(--hh-linen-300)", paddingTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="var(--hh-stone-400)" strokeWidth="1.2"/><path d="M8 5v3.5l2 1.5" stroke="var(--hh-stone-400)" strokeWidth="1.2" strokeLinecap="round"/></svg>
-            <span
-              onClick={e => { e.stopPropagation(); setActiveCard("arrival"); arrTimeRef.current?.showPicker?.(); arrTimeRef.current?.click(); }}
-              style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, color: arrivalTime ? "var(--hh-ink-900)" : "var(--hh-stone-400)", letterSpacing: "0.08em" }}
-            >{arrivalTime || "00:00"}</span>
+          {/* Date tap zone */}
+          <div
+            style={{ position: "relative", padding: "16px 16px 12px", cursor: "pointer" }}
+            onClick={() => setActiveCard("arrival")}
+          >
+            <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, letterSpacing: "0.16em", color: activeCard === "arrival" ? "#C1693A" : "var(--hh-stone-400)", textTransform: "uppercase", marginBottom: 8, fontWeight: 600, pointerEvents: "none" }}>Arrival</div>
+            {arrivalDate ? (() => {
+              const { day, num, month } = formatDateCard(arrivalDate);
+              return (
+                <>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2, pointerEvents: "none" }}>
+                    <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.06em" }}>{day}</span>
+                    <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 44, lineHeight: 0.9, color: "var(--hh-ink-900)", letterSpacing: "-0.03em" }}>{num}</span>
+                  </div>
+                  <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, fontStyle: "italic", color: "var(--hh-ink-700)", pointerEvents: "none" }}>{month}</div>
+                </>
+              );
+            })() : (
+              <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, fontStyle: "italic", color: "var(--hh-stone-400)", marginTop: 4, pointerEvents: "none" }}>Pick date</div>
+            )}
+            {/* Invisible date input covers the entire date zone */}
+            <input
+              type="date"
+              value={arrivalDate}
+              min={todayIso()}
+              onChange={e => { setActiveCard("arrival"); handleArrivalDateChange(e.target.value); }}
+              style={inputOverlay}
+            />
           </div>
-          {/* Hidden native inputs */}
-          <input ref={arrDateRef} type="date" value={arrivalDate} min={todayIso()} onChange={e => handleArrivalDateChange(e.target.value)} style={{ position: "absolute", opacity: 0, pointerEvents: "none", top: 0, left: 0, width: 1, height: 1 }}/>
-          <input ref={arrTimeRef} type="time" value={arrivalTime} onChange={e => onChangeArrivalTime(e.target.value)} style={{ position: "absolute", opacity: 0, pointerEvents: "none", top: 0, left: 0, width: 1, height: 1 }}/>
+
+          {/* Time tap zone */}
+          <div
+            style={{ position: "relative", borderTop: "0.5px dashed var(--hh-linen-300)", padding: "10px 16px 14px", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
+            onClick={() => setActiveCard("arrival")}
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ pointerEvents: "none" }}><circle cx="8" cy="8" r="6.5" stroke="var(--hh-stone-400)" strokeWidth="1.2"/><path d="M8 5v3.5l2 1.5" stroke="var(--hh-stone-400)" strokeWidth="1.2" strokeLinecap="round"/></svg>
+            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, color: arrivalTime ? "var(--hh-ink-900)" : "var(--hh-stone-400)", letterSpacing: "0.08em", pointerEvents: "none" }}>{arrivalTime || "hh:mm"}</span>
+            {/* Invisible time input covers the time row */}
+            <input
+              type="time"
+              value={arrivalTime}
+              onChange={e => { setActiveCard("arrival"); onChangeArrivalTime(e.target.value); }}
+              style={inputOverlay}
+            />
+          </div>
         </div>
 
         {/* Nights display */}
@@ -349,36 +369,55 @@ function StepArrivalDeparture({
           <span style={{ fontSize: 14, color: "var(--hh-stone-400)", marginTop: 2 }}>→</span>
         </div>
 
-        {/* Departure card */}
+        {/* ── Departure card ── */}
         <div
-          onClick={() => { setActiveCard("departure"); depDateRef.current?.showPicker?.(); depDateRef.current?.click(); }}
-          style={{ position: "relative", borderRadius: 20, border: activeCard === "departure" ? "2px solid #C1693A" : "0.5px solid var(--hh-linen-300)", background: "var(--hh-linen-50)", padding: "16px 16px 14px", cursor: "pointer", overflow: "hidden" }}
+          style={{ position: "relative", borderRadius: 20, border: activeCard === "departure" ? "2px solid #C1693A" : "0.5px solid var(--hh-linen-300)", background: "var(--hh-linen-50)", overflow: "hidden" }}
         >
-          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, letterSpacing: "0.16em", color: activeCard === "departure" ? "#C1693A" : "var(--hh-stone-400)", textTransform: "uppercase", marginBottom: 8, fontWeight: 600 }}>Departure</div>
-          {departureDate ? (() => {
-            const { day, num, month } = formatDateCard(departureDate);
-            return (
-              <>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
-                  <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.06em" }}>{day}</span>
-                  <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 44, lineHeight: 0.9, color: "var(--hh-ink-900)", letterSpacing: "-0.03em" }}>{num}</span>
-                </div>
-                <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, fontStyle: "italic", color: "var(--hh-ink-700)", marginBottom: 10 }}>{month}</div>
-              </>
-            );
-          })() : (
-            <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, fontStyle: "italic", color: "var(--hh-stone-400)", marginBottom: 10, marginTop: 4 }}>Pick date</div>
-          )}
-          <div style={{ borderTop: "0.5px dashed var(--hh-linen-300)", paddingTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="var(--hh-stone-400)" strokeWidth="1.2"/><path d="M8 5v3.5l2 1.5" stroke="var(--hh-stone-400)" strokeWidth="1.2" strokeLinecap="round"/></svg>
-            <span
-              onClick={e => { e.stopPropagation(); setActiveCard("departure"); depTimeRef.current?.showPicker?.(); depTimeRef.current?.click(); }}
-              style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, color: departureTime ? "var(--hh-ink-900)" : "var(--hh-stone-400)", letterSpacing: "0.08em" }}
-            >{departureTime || "00:00"}</span>
+          {/* Date tap zone */}
+          <div
+            style={{ position: "relative", padding: "16px 16px 12px", cursor: "pointer" }}
+            onClick={() => setActiveCard("departure")}
+          >
+            <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, letterSpacing: "0.16em", color: activeCard === "departure" ? "#C1693A" : "var(--hh-stone-400)", textTransform: "uppercase", marginBottom: 8, fontWeight: 600, pointerEvents: "none" }}>Departure</div>
+            {departureDate ? (() => {
+              const { day, num, month } = formatDateCard(departureDate);
+              return (
+                <>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2, pointerEvents: "none" }}>
+                    <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.06em" }}>{day}</span>
+                    <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 44, lineHeight: 0.9, color: "var(--hh-ink-900)", letterSpacing: "-0.03em" }}>{num}</span>
+                  </div>
+                  <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, fontStyle: "italic", color: "var(--hh-ink-700)", pointerEvents: "none" }}>{month}</div>
+                </>
+              );
+            })() : (
+              <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, fontStyle: "italic", color: "var(--hh-stone-400)", marginTop: 4, pointerEvents: "none" }}>Pick date</div>
+            )}
+            {/* Invisible date input covers the entire date zone */}
+            <input
+              type="date"
+              value={departureDate}
+              min={arrivalDate || todayIso()}
+              onChange={e => { setActiveCard("departure"); onChangeDepartureDate(e.target.value); }}
+              style={inputOverlay}
+            />
           </div>
-          {/* Hidden native inputs */}
-          <input ref={depDateRef} type="date" value={departureDate} min={arrivalDate || todayIso()} onChange={e => onChangeDepartureDate(e.target.value)} style={{ position: "absolute", opacity: 0, pointerEvents: "none", top: 0, left: 0, width: 1, height: 1 }}/>
-          <input ref={depTimeRef} type="time" value={departureTime} onChange={e => onChangeDepartureTime(e.target.value)} style={{ position: "absolute", opacity: 0, pointerEvents: "none", top: 0, left: 0, width: 1, height: 1 }}/>
+
+          {/* Time tap zone */}
+          <div
+            style={{ position: "relative", borderTop: "0.5px dashed var(--hh-linen-300)", padding: "10px 16px 14px", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
+            onClick={() => setActiveCard("departure")}
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ pointerEvents: "none" }}><circle cx="8" cy="8" r="6.5" stroke="var(--hh-stone-400)" strokeWidth="1.2"/><path d="M8 5v3.5l2 1.5" stroke="var(--hh-stone-400)" strokeWidth="1.2" strokeLinecap="round"/></svg>
+            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, color: departureTime ? "var(--hh-ink-900)" : "var(--hh-stone-400)", letterSpacing: "0.08em", pointerEvents: "none" }}>{departureTime || "hh:mm"}</span>
+            {/* Invisible time input covers the time row */}
+            <input
+              type="time"
+              value={departureTime}
+              onChange={e => { setActiveCard("departure"); onChangeDepartureTime(e.target.value); }}
+              style={inputOverlay}
+            />
+          </div>
         </div>
       </div>
 
