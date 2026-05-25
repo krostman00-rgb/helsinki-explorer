@@ -143,6 +143,12 @@ function makePlaceMarker(
   return { el: wrap, setSelected: apply };
 }
 
+export interface AccommodationMarker {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
 export function TripMapView({
   activities,
   selectedIdx,
@@ -150,6 +156,7 @@ export function TripMapView({
   allPlaces,
   selectedPlaceId,
   onPlaceClick,
+  accommodation,
 }: {
   activities: MapActivity[];
   selectedIdx: number;
@@ -157,9 +164,11 @@ export function TripMapView({
   allPlaces?: MapPlace[];
   selectedPlaceId?: string | null;
   onPlaceClick?: (place: MapPlace) => void;
+  accommodation?: AccommodationMarker | null;
 }) {
-  const containerRef    = useRef<HTMLDivElement>(null);
-  const mapRef          = useRef<maplibregl.Map | null>(null);
+  const containerRef      = useRef<HTMLDivElement>(null);
+  const mapRef            = useRef<maplibregl.Map | null>(null);
+  const stayMarkerRef     = useRef<maplibregl.Marker | null>(null);
 
   // Trip markers
   const tripMarkersRef  = useRef<maplibregl.Marker[]>([]);
@@ -354,6 +363,42 @@ export function TripMapView({
       offset: [0, -80],
     });
   }, [selectedPlaceId, allPlaces]);
+
+  // ── Accommodation (STAY) marker ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const addStay = () => {
+      // Remove old marker if any
+      stayMarkerRef.current?.remove();
+      stayMarkerRef.current = null;
+
+      if (!accommodation?.lat || !accommodation?.lng) return;
+
+      const el = document.createElement("div");
+      el.style.cssText = `
+        background:#1A1714;color:white;
+        padding:5px 10px;border-radius:20px;
+        font-size:11px;font-weight:600;letter-spacing:0.05em;
+        display:flex;align-items:center;gap:4px;
+        box-shadow:0 2px 8px rgba(0,0,0,0.35);
+        white-space:nowrap;cursor:default;
+      `;
+      el.innerHTML = `<span style="font-size:13px">🏠</span><span>STAY</span>`;
+
+      const popup = new maplibregl.Popup({ offset: 28, closeButton: false })
+        .setHTML(`<strong style="font-family:sans-serif;font-size:13px">${accommodation.name}</strong><br><span style="font-family:sans-serif;font-size:11px;color:#888">Your base</span>`);
+
+      stayMarkerRef.current = new maplibregl.Marker({ element: el, anchor: "bottom" })
+        .setLngLat([accommodation.lng, accommodation.lat])
+        .setPopup(popup)
+        .addTo(map);
+    };
+
+    if (map.isStyleLoaded()) addStay();
+    else map.once("load", addStay);
+  }, [accommodation]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }}/>;
 }

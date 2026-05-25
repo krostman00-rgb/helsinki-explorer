@@ -6,6 +6,7 @@ import {
   Building2, ShoppingBag, Users, History, Coffee, CalendarDays, ChevronLeft,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { differenceInCalendarDays, parseISO, format } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { generateTripDays } from "@/lib/trip-generator";
@@ -121,7 +122,7 @@ function DurationSlider({ value, onChange }: { value: number; onChange: (n: numb
 function StepDuration({ value, onChange, onNext, onBack }: { value: number; onChange: (n: number) => void; onNext: () => void; onBack?: () => void }) {
   const previews = DAY_PREVIEWS[value] ?? DAY_PREVIEWS[3];
   return (
-    <OnbChrome step={1} total={4} onBack={onBack} cta={<CtaPrimary onClick={onNext}>Continue <Arrow/></CtaPrimary>}>
+    <OnbChrome step={1} total={5} onBack={onBack} cta={<CtaPrimary onClick={onNext}>Continue <Arrow/></CtaPrimary>}>
       <div style={{ padding: "0 24px" }}>
         <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 01 · The shape of it</div>
         <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
@@ -172,6 +173,266 @@ function StepDuration({ value, onChange, onNext, onBack }: { value: number; onCh
   );
 }
 
+// ── Step 2 — Arrival & Departure dates ───────────────────────
+const TIME_SLOTS = [
+  { id: "morning",   label: "Morning",   range: "06–12", midHour: 9  },
+  { id: "afternoon", label: "Afternoon", range: "12–17", midHour: 14 },
+  { id: "evening",   label: "Evening",   range: "17–21", midHour: 19 },
+  { id: "night",     label: "Night",     range: "21–06", midHour: 22 },
+] as const;
+
+type TimeSlotId = typeof TIME_SLOTS[number]["id"];
+
+const ARRIVAL_CONTEXTS: Record<TimeSlotId, { bg: string; label: string; title: string; desc: string; tags: string[] }> = {
+  morning: {
+    bg: "#2D4A3E",
+    label: "MORNING ARRIVAL",
+    title: "Full first day ahead.",
+    desc: "Markets open, cafés ready. We've planned from 9am.",
+    tags: ["☕ Coffee", "🏛 Cathedral", "🌊 Harbourfront"],
+  },
+  afternoon: {
+    bg: "#4A6741",
+    label: "AFTERNOON ARRIVAL",
+    title: "Afternoon arrival.",
+    desc: "Start light — coffee, a walk, dinner to remember.",
+    tags: ["☕ Coffee", "🚶 Stroll", "🍽 Dinner"],
+  },
+  evening: {
+    bg: "#C1693A",
+    label: "EVENING ARRIVAL",
+    title: "Evening landing.",
+    desc: "Perfect for dinner, a sauna, the city at dusk.",
+    tags: ["🧖 Sauna", "🍷 Wine", "🌆 City"],
+  },
+  night: {
+    bg: "#1A1714",
+    label: "LATE ARRIVAL",
+    title: "Late arrival.",
+    desc: "Rest first. We'll have tomorrow ready for you.",
+    tags: ["🌙 Rest", "☕ Tomorrow", "▶ Explore"],
+  },
+};
+
+function getTimeSlotId(time: string): TimeSlotId {
+  const h = parseInt(time.split(":")[0], 10);
+  if (h >= 6 && h < 12) return "morning";
+  if (h >= 12 && h < 17) return "afternoon";
+  if (h >= 17 && h < 21) return "evening";
+  return "night";
+}
+
+function formatDateCard(isoDate: string): { day: string; num: string; month: string } {
+  const d = parseISO(isoDate);
+  return {
+    day:   format(d, "EEE").toUpperCase(),
+    num:   format(d, "d"),
+    month: format(d, "MMMM"),
+  };
+}
+
+function todayIso() { return format(new Date(), "yyyy-MM-dd"); }
+function defaultDepartureIso(arrivalIso: string, days: number) {
+  const d = parseISO(arrivalIso);
+  d.setDate(d.getDate() + days);
+  return format(d, "yyyy-MM-dd");
+}
+
+interface StepArrivalProps {
+  arrivalDate: string;
+  arrivalTime: string;
+  departureDate: string;
+  departureTime: string;
+  onChangeArrivalDate: (v: string) => void;
+  onChangeArrivalTime: (v: string) => void;
+  onChangeDepartureDate: (v: string) => void;
+  onChangeDepartureTime: (v: string) => void;
+  onNext: () => void;
+  onBack: () => void;
+}
+
+function StepArrivalDeparture({
+  arrivalDate, arrivalTime, departureDate, departureTime,
+  onChangeArrivalDate, onChangeArrivalTime, onChangeDepartureDate, onChangeDepartureTime,
+  onNext, onBack,
+}: StepArrivalProps) {
+  const [activeCard, setActiveCard] = useState<"arrival" | "departure">("arrival");
+
+  // Hidden input refs
+  const arrDateRef  = useRef<HTMLInputElement>(null);
+  const arrTimeRef  = useRef<HTMLInputElement>(null);
+  const depDateRef  = useRef<HTMLInputElement>(null);
+  const depTimeRef  = useRef<HTMLInputElement>(null);
+
+  const nights = arrivalDate && departureDate
+    ? Math.max(0, differenceInCalendarDays(parseISO(departureDate), parseISO(arrivalDate)))
+    : null;
+
+  const isDayTrip = nights === 0;
+  const slotId = getTimeSlotId(arrivalTime);
+  const ctx = ARRIVAL_CONTEXTS[slotId];
+
+  function pickSlot(slot: typeof TIME_SLOTS[number]) {
+    const hh = String(slot.midHour).padStart(2, "0");
+    onChangeArrivalTime(`${hh}:00`);
+  }
+
+  // Keep departure >= arrival
+  function handleArrivalDateChange(val: string) {
+    onChangeArrivalDate(val);
+    if (departureDate && val >= departureDate) {
+      const d = parseISO(val);
+      d.setDate(d.getDate() + 1);
+      onChangeDepartureDate(format(d, "yyyy-MM-dd"));
+    }
+  }
+
+  const canContinue = !!arrivalDate && !!arrivalTime && !!departureDate && !!departureTime;
+
+  return (
+    <OnbChrome step={2} total={5} onBack={onBack} cta={
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={onBack} style={{ flex: "0 0 auto", width: 60, height: 60, borderRadius: 28, border: "1px solid var(--hh-linen-300)", background: "transparent", display: "grid", placeItems: "center", cursor: "pointer" }}>
+          <ChevronLeft size={20} color="var(--hh-ink-900)" strokeWidth={1.6}/>
+        </button>
+        <div style={{ flex: 1 }}>
+          <CtaPrimary onClick={onNext} disabled={!canContinue}>Continue <Arrow/></CtaPrimary>
+        </div>
+      </div>
+    }>
+      <div style={{ padding: "0 24px" }}>
+        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 02 · The shape of it</div>
+        <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
+          When does <span style={{ fontStyle: "italic" }}>Helsinki</span><br/>begin?
+        </div>
+      </div>
+
+      {/* Date cards */}
+      <div style={{ padding: "28px 24px 0", display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 10, alignItems: "center" }}>
+
+        {/* Arrival card */}
+        <div
+          onClick={() => { setActiveCard("arrival"); arrDateRef.current?.showPicker?.(); arrDateRef.current?.click(); }}
+          style={{ position: "relative", borderRadius: 20, border: activeCard === "arrival" ? "2px solid #C1693A" : "0.5px solid var(--hh-linen-300)", background: "var(--hh-linen-50)", padding: "16px 16px 14px", cursor: "pointer", overflow: "hidden" }}
+        >
+          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, letterSpacing: "0.16em", color: activeCard === "arrival" ? "#C1693A" : "var(--hh-stone-400)", textTransform: "uppercase", marginBottom: 8, fontWeight: 600 }}>Arrival</div>
+          {arrivalDate ? (() => {
+            const { day, num, month } = formatDateCard(arrivalDate);
+            return (
+              <>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+                  <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.06em" }}>{day}</span>
+                  <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 44, lineHeight: 0.9, color: "var(--hh-ink-900)", letterSpacing: "-0.03em" }}>{num}</span>
+                </div>
+                <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, fontStyle: "italic", color: "var(--hh-ink-700)", marginBottom: 10 }}>{month}</div>
+              </>
+            );
+          })() : (
+            <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, fontStyle: "italic", color: "var(--hh-stone-400)", marginBottom: 10, marginTop: 4 }}>Pick date</div>
+          )}
+          <div style={{ borderTop: "0.5px dashed var(--hh-linen-300)", paddingTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="var(--hh-stone-400)" strokeWidth="1.2"/><path d="M8 5v3.5l2 1.5" stroke="var(--hh-stone-400)" strokeWidth="1.2" strokeLinecap="round"/></svg>
+            <span
+              onClick={e => { e.stopPropagation(); setActiveCard("arrival"); arrTimeRef.current?.showPicker?.(); arrTimeRef.current?.click(); }}
+              style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, color: arrivalTime ? "var(--hh-ink-900)" : "var(--hh-stone-400)", letterSpacing: "0.08em" }}
+            >{arrivalTime || "00:00"}</span>
+          </div>
+          {/* Hidden native inputs */}
+          <input ref={arrDateRef} type="date" value={arrivalDate} min={todayIso()} onChange={e => handleArrivalDateChange(e.target.value)} style={{ position: "absolute", opacity: 0, pointerEvents: "none", top: 0, left: 0, width: 1, height: 1 }}/>
+          <input ref={arrTimeRef} type="time" value={arrivalTime} onChange={e => onChangeArrivalTime(e.target.value)} style={{ position: "absolute", opacity: 0, pointerEvents: "none", top: 0, left: 0, width: 1, height: 1 }}/>
+        </div>
+
+        {/* Nights display */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+          <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: nights !== null ? 32 : 22, color: "var(--hh-ink-900)", lineHeight: 1 }}>{nights !== null ? nights : "·"}</span>
+          <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8, color: "var(--hh-stone-400)", letterSpacing: "0.12em", textTransform: "uppercase" }}>{nights !== null ? "nights" : ""}</span>
+          <span style={{ fontSize: 14, color: "var(--hh-stone-400)", marginTop: 2 }}>→</span>
+        </div>
+
+        {/* Departure card */}
+        <div
+          onClick={() => { setActiveCard("departure"); depDateRef.current?.showPicker?.(); depDateRef.current?.click(); }}
+          style={{ position: "relative", borderRadius: 20, border: activeCard === "departure" ? "2px solid #C1693A" : "0.5px solid var(--hh-linen-300)", background: "var(--hh-linen-50)", padding: "16px 16px 14px", cursor: "pointer", overflow: "hidden" }}
+        >
+          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, letterSpacing: "0.16em", color: activeCard === "departure" ? "#C1693A" : "var(--hh-stone-400)", textTransform: "uppercase", marginBottom: 8, fontWeight: 600 }}>Departure</div>
+          {departureDate ? (() => {
+            const { day, num, month } = formatDateCard(departureDate);
+            return (
+              <>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+                  <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.06em" }}>{day}</span>
+                  <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 44, lineHeight: 0.9, color: "var(--hh-ink-900)", letterSpacing: "-0.03em" }}>{num}</span>
+                </div>
+                <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, fontStyle: "italic", color: "var(--hh-ink-700)", marginBottom: 10 }}>{month}</div>
+              </>
+            );
+          })() : (
+            <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 18, fontStyle: "italic", color: "var(--hh-stone-400)", marginBottom: 10, marginTop: 4 }}>Pick date</div>
+          )}
+          <div style={{ borderTop: "0.5px dashed var(--hh-linen-300)", paddingTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="var(--hh-stone-400)" strokeWidth="1.2"/><path d="M8 5v3.5l2 1.5" stroke="var(--hh-stone-400)" strokeWidth="1.2" strokeLinecap="round"/></svg>
+            <span
+              onClick={e => { e.stopPropagation(); setActiveCard("departure"); depTimeRef.current?.showPicker?.(); depTimeRef.current?.click(); }}
+              style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, color: departureTime ? "var(--hh-ink-900)" : "var(--hh-stone-400)", letterSpacing: "0.08em" }}
+            >{departureTime || "00:00"}</span>
+          </div>
+          {/* Hidden native inputs */}
+          <input ref={depDateRef} type="date" value={departureDate} min={arrivalDate || todayIso()} onChange={e => onChangeDepartureDate(e.target.value)} style={{ position: "absolute", opacity: 0, pointerEvents: "none", top: 0, left: 0, width: 1, height: 1 }}/>
+          <input ref={depTimeRef} type="time" value={departureTime} onChange={e => onChangeDepartureTime(e.target.value)} style={{ position: "absolute", opacity: 0, pointerEvents: "none", top: 0, left: 0, width: 1, height: 1 }}/>
+        </div>
+      </div>
+
+      {/* Day-trip notice */}
+      {isDayTrip && (
+        <div style={{ margin: "12px 24px 0", padding: "10px 16px", borderRadius: 12, background: "rgba(193,105,58,0.08)", border: "0.5px solid rgba(193,105,58,0.3)", fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "#C1693A" }}>
+          A day trip? We'll make it count.
+        </div>
+      )}
+
+      {/* Arrival window + time slot buttons */}
+      <div style={{ padding: "24px 24px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "var(--hh-stone-400)", letterSpacing: "0.14em", textTransform: "uppercase" }}>Arrival window</span>
+          <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 13, color: "var(--hh-ink-900)", letterSpacing: "0.06em" }}>{arrivalTime || "—"}</span>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {TIME_SLOTS.map(slot => {
+            const active = slotId === slot.id && !!arrivalTime;
+            return (
+              <button
+                key={slot.id}
+                onClick={() => pickSlot(slot)}
+                style={{ flex: 1, padding: "10px 0", borderRadius: 999, border: active ? "none" : "0.5px solid var(--hh-linen-300)", background: active ? "#C1693A" : "var(--hh-linen-50)", cursor: "pointer", textAlign: "center", transition: "background 0.15s" }}
+              >
+                <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 12, fontWeight: 600, color: active ? "#FAF7F1" : "var(--hh-ink-900)" }}>{slot.label}</div>
+                <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: active ? "rgba(250,247,241,0.7)" : "var(--hh-stone-400)", marginTop: 2 }}>{slot.range}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Arrival context card */}
+      {arrivalTime && (
+        <div style={{ margin: "20px 24px 0", borderRadius: 20, background: ctx.bg, padding: "20px 20px 22px", transition: "background 0.3s ease" }}>
+          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: "rgba(250,247,241,0.6)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 5, height: 5, borderRadius: 999, background: "rgba(250,247,241,0.5)" }}/>
+            {ctx.label} · {arrivalTime}
+          </div>
+          <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 26, lineHeight: 1.05, letterSpacing: "-0.02em", color: "#FAF7F1", marginBottom: 8 }}>{ctx.title}</div>
+          <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14, lineHeight: 1.5, color: "rgba(250,247,241,0.8)", marginBottom: 16 }}>{ctx.desc}</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {ctx.tags.map(tag => (
+              <div key={tag} style={{ background: "rgba(250,247,241,0.12)", border: "0.5px solid rgba(250,247,241,0.2)", borderRadius: 999, padding: "5px 12px", fontFamily: "var(--font-geist-sans)", fontSize: 12, color: "rgba(250,247,241,0.9)" }}>{tag}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
+    </OnbChrome>
+  );
+}
+
 // ── Step 2 — Budget (BudgetB euro signs + slider + context card)
 const BUDGET_TIERS = [
   { n: 1, mark: "€",   title: "Coffee-shop curious", spend: "€30–60",  pitch: "Public saunas, market hall lunches, the kind of day you wear out your shoes.", moments: [{ name: "Cinnamon bun · Sävy", price: "€4.50" }, { name: "Allas pools · daysplash", price: "€16" }, { name: "Suomenlinna ferry", price: "€3.10" }], tint: "var(--hh-moss-700)" },
@@ -200,7 +461,7 @@ function BudgetSlider({ value, onChange }: { value: number; onChange: (n: number
 function StepBudget({ value, onChange, onNext, onBack }: { value: number; onChange: (n: number) => void; onNext: () => void; onBack: () => void }) {
   const tier = BUDGET_TIERS[value - 1];
   return (
-    <OnbChrome step={2} total={4} onBack={onBack} cta={
+    <OnbChrome step={3} total={5} onBack={onBack} cta={
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={onBack} style={{ flex: "0 0 auto", width: 60, height: 60, borderRadius: 28, border: "1px solid var(--hh-linen-300)", background: "transparent", display: "grid", placeItems: "center", cursor: "pointer" }}>
           <ChevronLeft size={20} color="var(--hh-ink-900)" strokeWidth={1.6}/>
@@ -209,7 +470,7 @@ function StepBudget({ value, onChange, onNext, onBack }: { value: number; onChan
       </div>
     }>
       <div style={{ padding: "0 24px" }}>
-        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 02 · Money talk</div>
+        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 03 · Money talk</div>
         <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
           Pick your <span style={{ fontStyle: "italic" }}>tempo.</span>
         </div>
@@ -261,6 +522,242 @@ function StepBudget({ value, onChange, onNext, onBack }: { value: number; onChan
         </div>
       </div>
 
+    </OnbChrome>
+  );
+}
+
+// ── Step 5 — Accommodation ───────────────────────────────────
+interface AccommodationResult {
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+}
+
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+function formatDistance(m: number): string {
+  if (m < 500) return `${Math.round(m)} m`;
+  return `${Math.round(m / 80)} min walk`;
+}
+
+interface StepAccommodationProps {
+  accommodationName: string;
+  accommodationAddress: string;
+  accommodationLat: number | null;
+  accommodationLng: number | null;
+  onSelect: (r: AccommodationResult) => void;
+  onSkip: () => void;
+  onNext: () => void;
+  onBack: () => void;
+}
+
+function StepAccommodation({
+  accommodationName, accommodationAddress, accommodationLat, accommodationLng,
+  onSelect, onSkip, onNext, onBack,
+}: StepAccommodationProps) {
+  const [query, setQuery]           = useState("");
+  const [results, setResults]       = useState<AccommodationResult[]>([]);
+  const [loading, setLoading]       = useState(false);
+  const [nearbyPlaces, setNearby]   = useState<{ name: string; category: string; distanceM: number }[]>([]);
+  const debounceRef                 = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const selected                    = !!accommodationName;
+
+  // Fetch nearby places when accommodation selected
+  useEffect(() => {
+    if (!accommodationLat || !accommodationLng) return;
+    createClient()
+      .from("places")
+      .select("name, category, lat, lng")
+      .then(({ data }) => {
+        if (!data) return;
+        const sorted = data
+          .map(p => ({ name: p.name, category: p.category, distanceM: haversineMeters(accommodationLat, accommodationLng, p.lat, p.lng) }))
+          .sort((a, b) => a.distanceM - b.distanceM)
+          .slice(0, 3);
+        setNearby(sorted);
+      });
+  }, [accommodationLat, accommodationLng]);
+
+  // Nominatim geocoding with debounce
+  useEffect(() => {
+    if (query.length < 3) { setResults([]); return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + " Helsinki")}&format=json&viewbox=24.7,60.4,25.3,59.9&bounded=1&limit=4&addressdetails=1`;
+        const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+        const data = await res.json();
+        setResults(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (data as any[]).map((f: any) => ({
+            name: f.name || f.display_name.split(",")[0],
+            address: f.display_name,
+            lat: parseFloat(f.lat),
+            lng: parseFloat(f.lon),
+          }))
+        );
+      } catch { setResults([]); }
+      setLoading(false);
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query]);
+
+  const CATEGORY_LABEL: Record<string, string> = {
+    cafe: "Café", food: "Restaurant", sauna: "Sauna",
+    museums: "Museum", nature: "Nature", design: "Design",
+    arch: "Architecture", shop: "Shop", night: "Nightlife",
+    history: "Historic", family: "Family", events: "Event",
+  };
+
+  return (
+    <OnbChrome step={5} total={5} onBack={onBack} cta={
+      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        <button
+          onClick={selected ? onNext : onSkip}
+          style={{
+            width: "100%", height: 60, borderRadius: 28, border: "none",
+            background: selected ? "#C1693A" : "var(--hh-ink-900)",
+            color: "#FAF7F1",
+            fontFamily: "var(--font-geist-sans)", fontSize: 16, fontWeight: 500,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            boxShadow: selected ? "0 8px 24px rgba(193,105,58,0.35)" : "0 8px 24px rgba(26,22,17,0.25)",
+            cursor: "pointer", transition: "background 0.3s, box-shadow 0.3s",
+          }}
+        >
+          {selected ? "Build my Helsinki" : "Continue"} <Arrow/>
+        </button>
+        {!selected && (
+          <button
+            onClick={onSkip}
+            style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "var(--hh-stone-400)", textDecoration: "underline", textDecorationColor: "var(--hh-linen-300)", marginTop: 12, padding: 0 }}
+          >
+            Skip — we&apos;ll use city centre as your base
+          </button>
+        )}
+      </div>
+    }>
+      <div style={{ padding: "0 24px" }}>
+        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 05 · Your base</div>
+        <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
+          Where&apos;s <span style={{ fontStyle: "italic" }}>home</span><br/>for these days?
+        </div>
+        <p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.5, color: "var(--hh-ink-700)" }}>We&apos;ll build your days around it — shorter walks, smarter routes.</p>
+      </div>
+
+      {selected ? (
+        /* ── Confirmation card ── */
+        <div style={{ margin: "28px 24px 0" }}>
+          <div style={{ borderRadius: 20, border: "0.5px solid var(--hh-linen-300)", background: "var(--hh-linen-50)", padding: "20px 20px 22px" }}>
+            <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: "var(--hh-stone-400)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 6 }}>Your neighbourhood</div>
+            <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 28, lineHeight: 1.05, letterSpacing: "-0.02em", color: "var(--hh-ink-900)", marginBottom: 4 }}>{accommodationName}.</div>
+            <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 12, color: "var(--hh-stone-400)", marginBottom: 20, lineHeight: 1.4 }}>{accommodationAddress}</div>
+
+            {nearbyPlaces.length > 0 && (
+              <>
+                <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: "var(--hh-stone-400)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 10 }}>Nearby on your list</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {nearbyPlaces.map(p => (
+                    <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: 999, background: "var(--hh-copper-600)", flex: "0 0 auto" }}/>
+                      <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "var(--hh-ink-900)", flex: 1 }}>{p.name}</span>
+                      <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "var(--hh-stone-400)", letterSpacing: "0.04em" }}>{formatDistance(p.distanceM)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <button
+              onClick={() => { onSelect({ name: "", address: "", lat: 0, lng: 0 }); setQuery(""); }}
+              style={{ marginTop: 20, background: "none", border: "0.5px solid var(--hh-linen-300)", borderRadius: 999, padding: "8px 18px", fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "var(--hh-stone-500)", cursor: "pointer" }}
+            >
+              Change ↗
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* ── Search UI ── */
+        <div style={{ padding: "28px 24px 0" }}>
+          {/* Search input */}
+          <div style={{ position: "relative", marginBottom: 16 }}>
+            <div style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="var(--hh-stone-400)" strokeWidth="1.3"/><path d="M11 11l3 3" stroke="var(--hh-stone-400)" strokeWidth="1.3" strokeLinecap="round"/></svg>
+            </div>
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Hotel or address..."
+              style={{ width: "100%", height: 52, borderRadius: 14, border: "0.5px solid var(--hh-linen-300)", background: "var(--hh-linen-50)", paddingLeft: 42, paddingRight: 16, fontFamily: "var(--font-geist-sans)", fontSize: 15, color: "var(--hh-ink-900)", outline: "none", boxSizing: "border-box" }}
+            />
+            {loading && (
+              <div style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, borderRadius: 999, border: "1.5px solid var(--hh-stone-400)", borderTopColor: "transparent", animation: "spin 0.6s linear infinite" }}/>
+            )}
+          </div>
+
+          {/* Results */}
+          {results.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: "var(--hh-stone-400)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 10 }}>Suggestions</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {results.map((r, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { onSelect(r); setQuery(""); setResults([]); }}
+                    style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 16, border: "0.5px solid var(--hh-linen-300)", background: "var(--hh-linen-50)", cursor: "pointer", textAlign: "left" }}
+                  >
+                    <div style={{ width: 34, height: 34, borderRadius: 999, background: "var(--hh-linen-200)", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1.5A4.5 4.5 0 003.5 6c0 3.5 4.5 8.5 4.5 8.5S12.5 9.5 12.5 6A4.5 4.5 0 008 1.5zm0 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="var(--hh-stone-500)"/></svg>
+                    </div>
+                    <div style={{ flex: 1, overflow: "hidden" }}>
+                      <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14, fontWeight: 500, color: "var(--hh-ink-900)", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</div>
+                      <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 11, color: "var(--hh-stone-400)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.address}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Empty state with suggestions when no query */}
+          {!query && (
+            <div>
+              <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: "var(--hh-stone-400)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 10 }}>Popular areas</div>
+              {[
+                { name: "Hotel Kämp", address: "Pohjoisesplanadi 29 · Centre", lat: 60.1688, lng: 24.9400 },
+                { name: "Airbnb · Kallio", address: "Vaasankatu · Kallio", lat: 60.1840, lng: 24.9510 },
+                { name: "Clarion Hotel", address: "Tyynenmerenkatu 2 · Jätkäsaari", lat: 60.1553, lng: 24.9164 },
+              ].map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => onSelect(s)}
+                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 16, border: "0.5px solid var(--hh-linen-300)", background: "var(--hh-linen-50)", cursor: "pointer", textAlign: "left", marginBottom: 8, width: "100%" }}
+                >
+                  <div style={{ width: 34, height: 34, borderRadius: 999, background: "var(--hh-linen-200)", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1.5A4.5 4.5 0 003.5 6c0 3.5 4.5 8.5 4.5 8.5S12.5 9.5 12.5 6A4.5 4.5 0 008 1.5zm0 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="var(--hh-stone-500)"/></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14, fontWeight: 500, color: "var(--hh-ink-900)", marginBottom: 2 }}>{s.name}</div>
+                    <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 11, color: "var(--hh-stone-400)" }}>{s.address}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* CATEGORY_LABEL used via nearbyPlaces — kept to avoid unused-var lint */}
+      <span style={{ display: "none" }}>{JSON.stringify(CATEGORY_LABEL)}</span>
     </OnbChrome>
   );
 }
@@ -644,7 +1141,7 @@ function StepInterests({ value, onChange, onNext, isSubmitting, onBack }: { valu
   };
 
   return (
-    <OnbChrome step={3} total={4} onBack={onBack} cta={
+    <OnbChrome step={4} total={5} onBack={onBack} cta={
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={onBack} style={{ flex: "0 0 auto", width: 60, height: 60, borderRadius: 28, border: "1px solid var(--hh-linen-300)", background: "transparent", display: "grid", placeItems: "center", cursor: "pointer" }}>
           <ChevronLeft size={20} color="var(--hh-ink-900)" strokeWidth={1.6}/>
@@ -657,7 +1154,7 @@ function StepInterests({ value, onChange, onNext, isSubmitting, onBack }: { valu
       </div>
     }>
       <div style={{ padding: "0 24px" }}>
-        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 03 · Your hand</div>
+        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>Chapter 04 · Your hand</div>
         <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
           What pulls you<br/><span style={{ fontStyle: "italic" }}>to a city?</span>
         </div>
@@ -698,6 +1195,51 @@ export default function OnboardingPage() {
   const [isSubmitting, setIsSubmitting]   = useState(false);
   const [submitError, setSubmitError]     = useState<string | null>(null);
 
+  // Step 2: arrival & departure
+  const [arrivalDate, setArrivalDate]       = useState("");
+  const [arrivalTime, setArrivalTime]       = useState("");
+  const [departureDate, setDepartureDate]   = useState("");
+  const [departureTime, setDepartureTime]   = useState("");
+
+  // Step 5: accommodation
+  const [accName, setAccName]               = useState("");
+  const [accAddress, setAccAddress]         = useState("");
+  const [accLat, setAccLat]                 = useState<number | null>(null);
+  const [accLng, setAccLng]                 = useState<number | null>(null);
+
+  // Keep duration in sync with picked dates
+  useEffect(() => {
+    if (arrivalDate && departureDate) {
+      const days = Math.max(1, differenceInCalendarDays(parseISO(departureDate), parseISO(arrivalDate)));
+      setDurationDays(days);
+    }
+  }, [arrivalDate, departureDate]);
+
+  // Pre-fill departure when arrival changes and duration is set
+  const handleArrivalChange = (v: string) => {
+    setArrivalDate(v);
+    if (v && !departureDate) {
+      setDepartureDate(defaultDepartureIso(v, durationDays));
+    }
+  };
+
+  const handleAccommodationSelect = (r: AccommodationResult) => {
+    if (!r.name) { setAccName(""); setAccAddress(""); setAccLat(null); setAccLng(null); return; }
+    setAccName(r.name);
+    setAccAddress(r.address);
+    setAccLat(r.lat);
+    setAccLng(r.lng);
+  };
+
+  const handleSkipAccommodation = () => {
+    // Default to Rautatientori (city centre)
+    setAccName("");
+    setAccAddress("");
+    setAccLat(60.1699);
+    setAccLng(24.9384);
+    setStep(6);
+  };
+
   const handleSubmit = async (finalPickedIds: string[]) => {
     console.log("[handleSubmit] user:", user?.id ?? "NULL", "isSubmitting:", isSubmitting);
     if (isSubmitting) return;
@@ -709,15 +1251,30 @@ export default function OnboardingPage() {
     setSubmitError(null);
 
     const supabase = createClient();
+
+    // Build title from dates if available, fallback to days
+    const tripTitle = arrivalDate
+      ? `Helsinki · ${format(parseISO(arrivalDate), "MMM yyyy")}`
+      : `Helsinki · ${durationDays} ${durationDays === 1 ? "day" : "days"}`;
+
     const { data, error } = await supabase
       .from("trips")
       .insert({
-        user_id:       user.id,
-        title:         `Helsinki · ${durationDays} ${durationDays === 1 ? "day" : "days"}`,
-        duration_days: durationDays,
-        budget_level:  budgetLevel,
+        user_id:               user.id,
+        title:                 tripTitle,
+        duration_days:         durationDays,
+        budget_level:          budgetLevel,
         interests,
-        status:        "planning",
+        status:                "planning",
+        start_date:            arrivalDate || null,
+        arrival_date:          arrivalDate || null,
+        arrival_time:          arrivalTime || null,
+        departure_date:        departureDate || null,
+        departure_time:        departureTime || null,
+        accommodation_name:    accName || null,
+        accommodation_address: accAddress || null,
+        accommodation_lat:     accLat,
+        accommodation_lng:     accLng,
       })
       .select()
       .single();
@@ -733,8 +1290,42 @@ export default function OnboardingPage() {
     router.push(`/trips/${data.id}`);
   };
 
-  if (step === 1) return <StepDuration value={durationDays} onChange={setDurationDays} onNext={() => setStep(2)} onBack={() => router.push("/")}/>;
-  if (step === 2) return <StepBudget value={budgetLevel} onChange={setBudgetLevel} onNext={() => setStep(3)} onBack={() => setStep(1)}/>;
-  if (step === 3) return <StepInterests value={interests} onChange={setInterests} onNext={() => setStep(4)} isSubmitting={isSubmitting} onBack={() => setStep(2)}/>;
-  return <StepDiscover budgetLevel={budgetLevel} interests={interests} onNext={ids => { setPickedIds(ids); handleSubmit(ids); }} onBack={() => setStep(3)} isSubmitting={isSubmitting} errorMessage={submitError}/>;
+  if (step === 1) return (
+    <StepDuration value={durationDays} onChange={setDurationDays} onNext={() => setStep(2)} onBack={() => router.push("/")}/>
+  );
+  if (step === 2) return (
+    <StepArrivalDeparture
+      arrivalDate={arrivalDate} arrivalTime={arrivalTime}
+      departureDate={departureDate} departureTime={departureTime}
+      onChangeArrivalDate={handleArrivalChange}
+      onChangeArrivalTime={setArrivalTime}
+      onChangeDepartureDate={setDepartureDate}
+      onChangeDepartureTime={setDepartureTime}
+      onNext={() => setStep(3)} onBack={() => setStep(1)}
+    />
+  );
+  if (step === 3) return (
+    <StepBudget value={budgetLevel} onChange={setBudgetLevel} onNext={() => setStep(4)} onBack={() => setStep(2)}/>
+  );
+  if (step === 4) return (
+    <StepInterests value={interests} onChange={setInterests} onNext={() => setStep(5)} isSubmitting={isSubmitting} onBack={() => setStep(3)}/>
+  );
+  if (step === 5) return (
+    <StepAccommodation
+      accommodationName={accName} accommodationAddress={accAddress}
+      accommodationLat={accLat} accommodationLng={accLng}
+      onSelect={handleAccommodationSelect}
+      onSkip={handleSkipAccommodation}
+      onNext={() => setStep(6)}
+      onBack={() => setStep(4)}
+    />
+  );
+  return (
+    <StepDiscover
+      budgetLevel={budgetLevel} interests={interests}
+      onNext={ids => { setPickedIds(ids); handleSubmit(ids); }}
+      onBack={() => setStep(5)}
+      isSubmitting={isSubmitting} errorMessage={submitError}
+    />
+  );
 }

@@ -112,6 +112,14 @@ export interface Database {
           interests: string[];
           status: "planning" | "active" | "completed";
           start_date: string | null;
+          arrival_date: string | null;
+          arrival_time: string | null;
+          departure_date: string | null;
+          departure_time: string | null;
+          accommodation_name: string | null;
+          accommodation_address: string | null;
+          accommodation_lat: number | null;
+          accommodation_lng: number | null;
         };
         Insert: {
           id?: string;
@@ -123,6 +131,14 @@ export interface Database {
           interests: string[];
           status?: "planning" | "active" | "completed";
           start_date?: string | null;
+          arrival_date?: string | null;
+          arrival_time?: string | null;
+          departure_date?: string | null;
+          departure_time?: string | null;
+          accommodation_name?: string | null;
+          accommodation_address?: string | null;
+          accommodation_lat?: number | null;
+          accommodation_lng?: number | null;
         };
         Update: {
           id?: string;
@@ -134,6 +150,14 @@ export interface Database {
           interests?: string[];
           status?: "planning" | "active" | "completed";
           start_date?: string | null;
+          arrival_date?: string | null;
+          arrival_time?: string | null;
+          departure_date?: string | null;
+          departure_time?: string | null;
+          accommodation_name?: string | null;
+          accommodation_address?: string | null;
+          accommodation_lat?: number | null;
+          accommodation_lng?: number | null;
         };
         Relationships: [];
       };

@@ -516,6 +516,17 @@ function AchievementToast({ icon, title, points }: { icon: string; title: string
   );
 }
 
+// ── Arrival / departure banner helpers ────────────────────────
+function isEveningArrival(time: string): boolean {
+  return parseInt(time.split(":")[0] ?? "0", 10) >= 17;
+}
+function isEarlyDeparture(time: string): boolean {
+  return parseInt(time.split(":")[0] ?? "0", 10) < 14;
+}
+function formatTime(time: string): string {
+  return time.substring(0, 5);
+}
+
 export default function TripDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -660,6 +671,24 @@ export default function TripDetailPage() {
           ))}
         </div>
       </div>
+
+      {/* Arrival / departure banners */}
+      {activeDayIdx === 0 && trip.arrival_time && isEveningArrival(trip.arrival_time) && (
+        <div style={{ margin: "12px 16px 0", padding: "12px 16px", borderRadius: 16, background: "rgba(59,110,165,0.07)", border: "0.5px solid rgba(59,110,165,0.22)", display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <span style={{ fontSize: 18, flex: "0 0 auto" }}>✈️</span>
+          <p style={{ fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "#133A5B", lineHeight: 1.5, margin: 0 }}>
+            Arriving at {formatTime(trip.arrival_time)} — we&apos;ve kept tonight relaxed.
+          </p>
+        </div>
+      )}
+      {activeDayIdx === days.length - 1 && trip.departure_time && isEarlyDeparture(trip.departure_time) && (
+        <div style={{ margin: "12px 16px 0", padding: "12px 16px", borderRadius: 16, background: "rgba(193,149,68,0.08)", border: "0.5px solid rgba(193,149,68,0.25)", display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <span style={{ fontSize: 18, flex: "0 0 auto" }}>⏱</span>
+          <p style={{ fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "#8B6400", lineHeight: 1.5, margin: 0 }}>
+            Departure day — leaving at {formatTime(trip.departure_time)}. Light schedule planned.
+          </p>
+        </div>
+      )}
 
       {/* Activity stack */}
       <div style={{ padding: "16px 16px 100px" }}>

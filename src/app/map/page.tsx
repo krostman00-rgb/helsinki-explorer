@@ -12,7 +12,7 @@ import { markActivityDone } from "@/lib/gamification";
 import { useAuth } from "@/providers/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
 import type { Trip, TripDay, TripActivity, Place } from "@/types/database.types";
-import type { MapActivity, MapPlace } from "@/components/TripMapView";
+import type { MapActivity, MapPlace, AccommodationMarker } from "@/components/TripMapView";
 import type { TransitResult } from "@/lib/transit";
 import { TransitConnector } from "@/components/TransitConnector";
 
@@ -97,6 +97,7 @@ export default function MapPage() {
   const [toast, setToast]                 = useState<string | null>(null);
   const [transitLegs, setTransitLegs]     = useState<(TransitResult | null)[]>([]);
   const [transitLoading, setTransitLoading] = useState(false);
+  const [accommodation, setAccommodation] = useState<AccommodationMarker | null>(null);
 
   const cardsRef  = useRef<HTMLDivElement>(null);
   const cardElsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -127,6 +128,15 @@ export default function MapPage() {
 
       if (!tripData) { setLoading(false); return; }
       setTrip(tripData);
+
+      // Set accommodation marker if available
+      if (tripData.accommodation_lat && tripData.accommodation_lng) {
+        setAccommodation({
+          name: tripData.accommodation_name ?? "Your stay",
+          lat: tripData.accommodation_lat,
+          lng: tripData.accommodation_lng,
+        });
+      }
 
       const { data: daysData } = await sb
         .from("trip_days")
@@ -241,6 +251,7 @@ export default function MapPage() {
             activities={mapActivities}
             selectedIdx={selectedIdx}
             onMarkerClick={handleMarkerClick}
+            accommodation={accommodation}
           />
         </div>
       )}
