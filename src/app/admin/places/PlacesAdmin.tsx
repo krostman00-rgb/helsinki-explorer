@@ -59,6 +59,7 @@ type PlaceForm = {
   address: string;
   description: string;
   price_level: string;
+  rating: string;      // 0–5, optional
   tags: string;        // comma-separated
   image_url: string;
   website: string;
@@ -82,7 +83,7 @@ const EMPTY_HOURS: Record<DayKey, DayHoursInput> = {
 
 const EMPTY_FORM: PlaceForm = {
   name: "", category: "food", lat: "", lng: "",
-  address: "", description: "", price_level: "2",
+  address: "", description: "", price_level: "2", rating: "",
   tags: "", image_url: "", website: "",
   pricing_info: "", phone: "", email: "", reservation_url: "",
   hours: structuredClone(EMPTY_HOURS),
@@ -124,6 +125,7 @@ function placeToForm(p: Place): PlaceForm {
     address:         p.address ?? "",
     description:     p.description ?? "",
     price_level:     String(p.price_level ?? 2),
+    rating:          p.rating != null ? String(p.rating) : "",
     tags:            (p.tags as string[]).join(", "),
     image_url:       p.image_url ?? "",
     website:         p.website ?? "",
@@ -151,6 +153,11 @@ function validate(form: PlaceForm): FormErrors {
   const pl = parseInt(form.price_level);
   if (isNaN(pl) || pl < 1 || pl > 4)
     errors.price_level = "Hintataso 1–4";
+  if (form.rating !== "") {
+    const r = parseFloat(form.rating);
+    if (isNaN(r) || r < 0 || r > 5)
+      errors.rating = "Arvosana 0–5 (esim. 4.6)";
+  }
   return errors;
 }
 
@@ -269,6 +276,7 @@ export default function PlacesAdmin({
       address:         form.address.trim() || null,
       description:     form.description.trim() || null,
       price_level:     parseInt(form.price_level),
+      rating:          form.rating !== "" ? parseFloat(form.rating) : null,
       tags:            form.tags.split(",").map(t => t.trim()).filter(Boolean),
       image_url:       form.image_url.trim() || null,
       website:         form.website.trim() || null,
@@ -420,6 +428,7 @@ export default function PlacesAdmin({
                 >
                   Hinta <SortIcon k="price_level"/>
                 </TableHead>
+                <TableHead className="hidden md:table-cell text-center">Arvosana</TableHead>
                 <TableHead className="hidden lg:table-cell">Tagit</TableHead>
                 <TableHead className="w-24 text-right">Toiminnot</TableHead>
               </TableRow>
@@ -427,7 +436,7 @@ export default function PlacesAdmin({
             <TableBody>
               {visible.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
                     Ei paikkoja haulla &ldquo;{search}&rdquo;
                   </TableCell>
                 </TableRow>
@@ -447,6 +456,9 @@ export default function PlacesAdmin({
                   </TableCell>
                   <TableCell className="hidden sm:table-cell text-center text-muted-foreground text-sm">
                     {priceLabel(place.price_level)}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell text-center text-muted-foreground text-sm">
+                    {place.rating != null ? `★ ${place.rating}` : "–"}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <div className="flex flex-wrap gap-1">
@@ -538,6 +550,22 @@ export default function PlacesAdmin({
                 <option value="3">€€€ — Kallis</option>
                 <option value="4">€€€€ — Luksus</option>
               </select>
+            </div>
+
+            {/* Rating */}
+            <div className="flex flex-col gap-1.5">
+              <FieldLabel error={errors.rating}>Arvosana (0–5)</FieldLabel>
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                max="5"
+                value={form.rating}
+                onChange={e => setField("rating", e.target.value)}
+                placeholder="4.6"
+                className="h-10"
+                aria-invalid={!!errors.rating}
+              />
             </div>
 
             {/* Location picker map */}
