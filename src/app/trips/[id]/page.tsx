@@ -5,6 +5,7 @@ import {
   Coffee, Utensils, Flame, Landmark, TreePine, Building2,
   Gem, Moon, Footprints, TramFront, Ship, BusFront, TrainFront,
   ChevronLeft, Plus, CircleCheck, Search, GripVertical,
+  Plane, Timer,
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import type { DropResult, DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
@@ -675,7 +676,7 @@ export default function TripDetailPage() {
       {/* Arrival / departure banners */}
       {activeDayIdx === 0 && trip.arrival_time && isEveningArrival(trip.arrival_time) && (
         <div style={{ margin: "12px 16px 0", padding: "12px 16px", borderRadius: 16, background: "rgba(59,110,165,0.07)", border: "0.5px solid rgba(59,110,165,0.22)", display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <span style={{ fontSize: 18, flex: "0 0 auto" }}>✈️</span>
+          <Plane size={16} color="#133A5B" strokeWidth={1.5} style={{ flex: "0 0 auto", marginTop: 2 }}/>
           <p style={{ fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "#133A5B", lineHeight: 1.5, margin: 0 }}>
             Arriving at {formatTime(trip.arrival_time)} — we&apos;ve kept tonight relaxed.
           </p>
@@ -683,7 +684,7 @@ export default function TripDetailPage() {
       )}
       {activeDayIdx === days.length - 1 && trip.departure_time && isEarlyDeparture(trip.departure_time) && (
         <div style={{ margin: "12px 16px 0", padding: "12px 16px", borderRadius: 16, background: "rgba(193,149,68,0.08)", border: "0.5px solid rgba(193,149,68,0.25)", display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <span style={{ fontSize: 18, flex: "0 0 auto" }}>⏱</span>
+          <Timer size={16} color="#8B6400" strokeWidth={1.5} style={{ flex: "0 0 auto", marginTop: 2 }}/>
           <p style={{ fontFamily: "var(--font-geist-sans)", fontSize: 13, color: "#8B6400", lineHeight: 1.5, margin: 0 }}>
             Departure day — leaving at {formatTime(trip.departure_time)}. Light schedule planned.
           </p>

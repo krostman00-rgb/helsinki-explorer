@@ -5,14 +5,14 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   Search, List, Map as MapIcon,
   Coffee, Utensils, Flame, Landmark, TreePine, Building2, Gem, Moon, ShoppingBag, Users, History, CalendarDays,
-  Star, MapPin, X, CheckCircle2, Plus,
+  Star, MapPin, X, CheckCircle2, Plus, LocateFixed,
 } from "lucide-react";
 import Link from "next/link";
 import { markActivityDone } from "@/lib/gamification";
 import { useAuth } from "@/providers/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
 import type { Trip, TripDay, TripActivity, Place } from "@/types/database.types";
-import type { MapActivity, MapPlace, AccommodationMarker } from "@/components/TripMapView";
+import type { MapActivity, MapPlace, AccommodationMarker, UserLocation } from "@/components/TripMapView";
 import type { TransitResult } from "@/lib/transit";
 import { TransitConnector } from "@/components/TransitConnector";
 
@@ -98,6 +98,8 @@ export default function MapPage() {
   const [transitLegs, setTransitLegs]     = useState<(TransitResult | null)[]>([]);
   const [transitLoading, setTransitLoading] = useState(false);
   const [accommodation, setAccommodation] = useState<AccommodationMarker | null>(null);
+  const [userLocation, setUserLocation]   = useState<UserLocation | null>(null);
+  const [locating, setLocating]           = useState(false);
 
   const cardsRef  = useRef<HTMLDivElement>(null);
   const cardElsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -252,6 +254,7 @@ export default function MapPage() {
             selectedIdx={selectedIdx}
             onMarkerClick={handleMarkerClick}
             accommodation={accommodation}
+            userLocation={userLocation}
           />
         </div>
       )}
@@ -473,6 +476,50 @@ export default function MapPage() {
             <div style={{ flex: "0 0 20px" }}/>
           </div>
         </div>
+      )}
+
+      {/* ── GPS locate button (map view only) ── */}
+      {view === "map" && (
+        <button
+          onClick={() => {
+            if (!navigator.geolocation) return;
+            setLocating(true);
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                setLocating(false);
+              },
+              () => setLocating(false),
+              { enableHighAccuracy: true, timeout: 8000 },
+            );
+          }}
+          style={{
+            position: "absolute",
+            bottom: 196,
+            right: 16,
+            zIndex: 25,
+            width: 44,
+            height: 44,
+            borderRadius: 999,
+            background: userLocation ? "var(--hh-ink-900)" : "rgba(250,247,241,0.92)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            border: "0.5px solid rgba(180,165,145,0.4)",
+            boxShadow: "0 2px 16px rgba(26,22,17,0.16)",
+            display: "grid",
+            placeItems: "center",
+            cursor: "pointer",
+            opacity: locating ? 0.6 : 1,
+            transition: "opacity 0.2s, background 0.2s",
+          }}
+          aria-label="Locate me"
+        >
+          <LocateFixed
+            size={18}
+            color={userLocation ? "#FAF7F1" : "var(--hh-stone-600)"}
+            strokeWidth={1.8}
+          />
+        </button>
       )}
 
       {/* ── Bottom: no trip CTA ── */}

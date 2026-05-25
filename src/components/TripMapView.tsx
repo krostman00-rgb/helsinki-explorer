@@ -149,6 +149,11 @@ export interface AccommodationMarker {
   lng: number;
 }
 
+export interface UserLocation {
+  lat: number;
+  lng: number;
+}
+
 export function TripMapView({
   activities,
   selectedIdx,
@@ -157,6 +162,7 @@ export function TripMapView({
   selectedPlaceId,
   onPlaceClick,
   accommodation,
+  userLocation,
 }: {
   activities: MapActivity[];
   selectedIdx: number;
@@ -165,10 +171,12 @@ export function TripMapView({
   selectedPlaceId?: string | null;
   onPlaceClick?: (place: MapPlace) => void;
   accommodation?: AccommodationMarker | null;
+  userLocation?: UserLocation | null;
 }) {
   const containerRef      = useRef<HTMLDivElement>(null);
   const mapRef            = useRef<maplibregl.Map | null>(null);
   const stayMarkerRef     = useRef<maplibregl.Marker | null>(null);
+  const userMarkerRef     = useRef<maplibregl.Marker | null>(null);
 
   // Trip markers
   const tripMarkersRef  = useRef<maplibregl.Marker[]>([]);
@@ -381,11 +389,11 @@ export function TripMapView({
         background:#1A1714;color:white;
         padding:5px 10px;border-radius:20px;
         font-size:11px;font-weight:600;letter-spacing:0.05em;
-        display:flex;align-items:center;gap:4px;
+        display:flex;align-items:center;gap:5px;
         box-shadow:0 2px 8px rgba(0,0,0,0.35);
         white-space:nowrap;cursor:default;
       `;
-      el.innerHTML = `<span style="font-size:13px">🏠</span><span>STAY</span>`;
+      el.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>STAY</span>`;
 
       const popup = new maplibregl.Popup({ offset: 28, closeButton: false })
         .setHTML(`<strong style="font-family:sans-serif;font-size:13px">${accommodation.name}</strong><br><span style="font-family:sans-serif;font-size:11px;color:#888">Your base</span>`);
@@ -399,6 +407,46 @@ export function TripMapView({
     if (map.isStyleLoaded()) addStay();
     else map.once("load", addStay);
   }, [accommodation]);
+
+  // ── User location ("you are here") marker ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const addUserMarker = () => {
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
+
+      if (!userLocation?.lat || !userLocation?.lng) return;
+
+      // Inject pulse animation once into <head>
+      if (!document.getElementById("hh-gps-pulse")) {
+        const s = document.createElement("style");
+        s.id = "hh-gps-pulse";
+        s.textContent = "@keyframes hhGpsPulse{0%,100%{transform:scale(1);opacity:.55}50%{transform:scale(2.2);opacity:0}}";
+        document.head.appendChild(s);
+      }
+
+      const wrap = document.createElement("div");
+      wrap.style.cssText = "width:22px;height:22px;position:relative;pointer-events:none;";
+
+      const pulse = document.createElement("div");
+      pulse.style.cssText = "position:absolute;inset:0;border-radius:50%;background:rgba(0,122,255,0.28);animation:hhGpsPulse 1.8s ease-out infinite;";
+
+      const dot = document.createElement("div");
+      dot.style.cssText = "position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:#007AFF;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,122,255,0.45);";
+
+      wrap.appendChild(pulse);
+      wrap.appendChild(dot);
+
+      userMarkerRef.current = new maplibregl.Marker({ element: wrap, anchor: "center" })
+        .setLngLat([userLocation.lng, userLocation.lat])
+        .addTo(map);
+    };
+
+    if (map.isStyleLoaded()) addUserMarker();
+    else map.once("load", addUserMarker);
+  }, [userLocation]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }}/>;
 }

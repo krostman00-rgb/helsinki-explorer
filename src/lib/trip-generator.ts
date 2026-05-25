@@ -4,6 +4,23 @@ import type { Database, Place } from "@/types/database.types";
 // How many activities fit per day at each budget level (max cap)
 const ACTIVITIES_PER_DAY: Record<number, number> = { 1: 3, 2: 4, 3: 5 };
 
+// Default visit duration in minutes per category
+const CATEGORY_DURATION: Record<string, number> = {
+  food:    120, // 2 h — restaurant meal
+  cafe:     45, // 45 min — coffee stop
+  sauna:    90, // 1.5 h
+  museums:  60, // 1 h
+  history:  60, // 1 h
+  events:  120, // 2 h
+  shop:    180, // 3 h
+  family:  180, // 3 h
+  arch:     30, // 30 min — quick admiration
+  design:   60, // 1 h
+  nature:  120, // 2 h
+  night:   180, // 3 h
+};
+const DEFAULT_DURATION = 60; // 1 h for any unspecified category
+
 // All possible time slots ordered earliest → latest
 const TIME_SLOTS = [
   { label: "Morning",   time: "09:30", duration: 90  },
@@ -201,7 +218,8 @@ export async function generateTripDays(
         title:            place.name,
         description:      place.description ?? undefined,
         order_index:      i,
-        duration_minutes: slot.duration,
+        // Use category-specific duration; fall back to slot estimate
+        duration_minutes: CATEGORY_DURATION[place.category] ?? DEFAULT_DURATION,
         completed:        false,
       };
     });

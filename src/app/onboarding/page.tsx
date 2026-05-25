@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Utensils, Flame, Landmark, Gem, TreePine, Moon,
   Building2, ShoppingBag, Users, History, Coffee, CalendarDays, ChevronLeft,
+  Waves, Wine, Play, Footprints, MapPin,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { differenceInCalendarDays, parseISO, format } from "date-fns";
@@ -182,35 +183,37 @@ const TIME_SLOTS = [
 ] as const;
 
 type TimeSlotId = typeof TIME_SLOTS[number]["id"];
+type LucideIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+type CtxTag = { Icon: LucideIcon; label: string };
 
-const ARRIVAL_CONTEXTS: Record<TimeSlotId, { bg: string; label: string; title: string; desc: string; tags: string[] }> = {
+const ARRIVAL_CONTEXTS: Record<TimeSlotId, { bg: string; label: string; title: string; desc: string; tags: CtxTag[] }> = {
   morning: {
     bg: "#2D4A3E",
     label: "MORNING ARRIVAL",
     title: "Full first day ahead.",
     desc: "Markets open, cafés ready. We've planned from 9am.",
-    tags: ["☕ Coffee", "🏛 Cathedral", "🌊 Harbourfront"],
+    tags: [{ Icon: Coffee, label: "Coffee" }, { Icon: Landmark, label: "Cathedral" }, { Icon: Waves, label: "Harbourfront" }],
   },
   afternoon: {
     bg: "#4A6741",
     label: "AFTERNOON ARRIVAL",
     title: "Afternoon arrival.",
     desc: "Start light — coffee, a walk, dinner to remember.",
-    tags: ["☕ Coffee", "🚶 Stroll", "🍽 Dinner"],
+    tags: [{ Icon: Coffee, label: "Coffee" }, { Icon: Footprints, label: "Stroll" }, { Icon: Utensils, label: "Dinner" }],
   },
   evening: {
     bg: "#C1693A",
     label: "EVENING ARRIVAL",
     title: "Evening landing.",
     desc: "Perfect for dinner, a sauna, the city at dusk.",
-    tags: ["🧖 Sauna", "🍷 Wine", "🌆 City"],
+    tags: [{ Icon: Flame, label: "Sauna" }, { Icon: Wine, label: "Wine" }, { Icon: Building2, label: "City" }],
   },
   night: {
     bg: "#1A1714",
     label: "LATE ARRIVAL",
     title: "Late arrival.",
     desc: "Rest first. We'll have tomorrow ready for you.",
-    tags: ["🌙 Rest", "☕ Tomorrow", "▶ Explore"],
+    tags: [{ Icon: Moon, label: "Rest" }, { Icon: Coffee, label: "Tomorrow" }, { Icon: Play, label: "Explore" }],
   },
 };
 
@@ -461,8 +464,11 @@ function StepArrivalDeparture({
           <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 26, lineHeight: 1.05, letterSpacing: "-0.02em", color: "#FAF7F1", marginBottom: 8 }}>{ctx.title}</div>
           <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14, lineHeight: 1.5, color: "rgba(250,247,241,0.8)", marginBottom: 16 }}>{ctx.desc}</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {ctx.tags.map(tag => (
-              <div key={tag} style={{ background: "rgba(250,247,241,0.12)", border: "0.5px solid rgba(250,247,241,0.2)", borderRadius: 999, padding: "5px 12px", fontFamily: "var(--font-geist-sans)", fontSize: 12, color: "rgba(250,247,241,0.9)" }}>{tag}</div>
+            {ctx.tags.map(({ Icon, label }) => (
+              <div key={label} style={{ background: "rgba(250,247,241,0.12)", border: "0.5px solid rgba(250,247,241,0.2)", borderRadius: 999, padding: "5px 12px", display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon size={11} color="rgba(250,247,241,0.85)" strokeWidth={1.8}/>
+                <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 12, color: "rgba(250,247,241,0.9)" }}>{label}</span>
+              </div>
             ))}
           </div>
         </div>
@@ -650,12 +656,6 @@ function StepAccommodation({
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
-  const CATEGORY_LABEL: Record<string, string> = {
-    cafe: "Café", food: "Restaurant", sauna: "Sauna",
-    museums: "Museum", nature: "Nature", design: "Design",
-    arch: "Architecture", shop: "Shop", night: "Nightlife",
-    history: "Historic", family: "Family", events: "Event",
-  };
 
   return (
     <OnbChrome step={5} total={5} onBack={onBack} cta={
@@ -755,7 +755,7 @@ function StepAccommodation({
                     style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 16, border: "0.5px solid var(--hh-linen-300)", background: "var(--hh-linen-50)", cursor: "pointer", textAlign: "left" }}
                   >
                     <div style={{ width: 34, height: 34, borderRadius: 999, background: "var(--hh-linen-200)", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1.5A4.5 4.5 0 003.5 6c0 3.5 4.5 8.5 4.5 8.5S12.5 9.5 12.5 6A4.5 4.5 0 008 1.5zm0 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="var(--hh-stone-500)"/></svg>
+                      <MapPin size={14} color="var(--hh-stone-500)" strokeWidth={1.5}/>
                     </div>
                     <div style={{ flex: 1, overflow: "hidden" }}>
                       <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14, fontWeight: 500, color: "var(--hh-ink-900)", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</div>
@@ -782,7 +782,7 @@ function StepAccommodation({
                   style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 16, border: "0.5px solid var(--hh-linen-300)", background: "var(--hh-linen-50)", cursor: "pointer", textAlign: "left", marginBottom: 8, width: "100%" }}
                 >
                   <div style={{ width: 34, height: 34, borderRadius: 999, background: "var(--hh-linen-200)", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1.5A4.5 4.5 0 003.5 6c0 3.5 4.5 8.5 4.5 8.5S12.5 9.5 12.5 6A4.5 4.5 0 008 1.5zm0 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="var(--hh-stone-500)"/></svg>
+                    <MapPin size={14} color="var(--hh-stone-500)" strokeWidth={1.5}/>
                   </div>
                   <div>
                     <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14, fontWeight: 500, color: "var(--hh-ink-900)", marginBottom: 2 }}>{s.name}</div>
@@ -795,8 +795,6 @@ function StepAccommodation({
         </div>
       )}
 
-      {/* CATEGORY_LABEL used via nearbyPlaces — kept to avoid unused-var lint */}
-      <span style={{ display: "none" }}>{JSON.stringify(CATEGORY_LABEL)}</span>
     </OnbChrome>
   );
 }
