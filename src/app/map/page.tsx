@@ -99,6 +99,12 @@ export default function MapPage() {
   const [accommodation, setAccommodation] = useState<AccommodationMarker | null>(null);
   const [userLocation, setUserLocation]   = useState<UserLocation | null>(null);
   const [locating, setLocating]           = useState(false);
+  const watchIdRef = useRef<number | null>(null);
+
+  // Clean up watchPosition on unmount
+  useEffect(() => () => {
+    if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+  }, []);
 
   const cardsRef  = useRef<HTMLDivElement>(null);
   const cardElsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -347,17 +353,35 @@ export default function MapPage() {
               setTimeout(() => setToast(null), 3000);
               return;
             }
+            // Stop any previous watch
+            if (watchIdRef.current !== null) {
+              navigator.geolocation.clearWatch(watchIdRef.current);
+              watchIdRef.current = null;
+            }
             setLocating(true);
-            navigator.geolocation.getCurrentPosition(
+            // watchPosition keeps refining the fix until GPS accuracy ≤ 80 m
+            watchIdRef.current = navigator.geolocation.watchPosition(
               (pos) => {
-                const lat = pos.coords.latitude;
-                const lng = pos.coords.longitude;
+                const { latitude: lat, longitude: lng, accuracy } = pos.coords;
                 setUserLocation({ lat, lng });
-                setLocating(false);
-                setToast(`📍 Sijainti löydetty · ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-                setTimeout(() => setToast(null), 4000);
+                const accStr = accuracy < 1000
+                  ? `± ${Math.round(accuracy)} m`
+                  : `± ${(accuracy / 1000).toFixed(1)} km`;
+                setToast(`📍 ${accStr} — haetaan tarkempaa…`);
+                // Good enough GPS fix — stop watching
+                if (accuracy <= 80) {
+                  navigator.geolocation.clearWatch(watchIdRef.current!);
+                  watchIdRef.current = null;
+                  setLocating(false);
+                  setToast(`📍 Sijainti löydetty · ${accStr}`);
+                  setTimeout(() => setToast(null), 3000);
+                }
               },
               (err) => {
+                if (watchIdRef.current !== null) {
+                  navigator.geolocation.clearWatch(watchIdRef.current);
+                  watchIdRef.current = null;
+                }
                 setLocating(false);
                 const msg =
                   err.code === 1 ? "Salli sijaintilupa selaimen asetuksista" :
@@ -366,7 +390,7 @@ export default function MapPage() {
                 setToast(msg);
                 setTimeout(() => setToast(null), 4000);
               },
-              { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+              { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
             );
           }}
           style={{
