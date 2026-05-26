@@ -149,13 +149,7 @@ export default function TripsPage() {
     await createClient().from("trips").delete().eq("id", trip.id);
   };
 
-  if (authLoading || isLoading) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100dvh - 68px)", background: "var(--hh-linen-100)" }}>
-        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 12, color: "var(--hh-stone-500)", letterSpacing: "0.1em" }}>Loading…</div>
-      </div>
-    );
-  }
+  const showLoading = authLoading || isLoading;
 
   return (
     <div className="hh-page-enter" style={{ background: "var(--hh-linen-100)", minHeight: "calc(100dvh - 68px)", padding: "48px 20px 40px" }}>
@@ -176,7 +170,13 @@ export default function TripsPage() {
         </Link>
       </div>
 
-      {trips.length === 0 ? (
+      {showLoading ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
+          {[0, 1].map(i => (
+            <div key={i} style={{ height: 168, borderRadius: 20, background: "rgba(180,165,145,0.18)", animation: "hh-skeleton-pulse 1.4s ease-in-out infinite", animationDelay: `${i * 0.1}s` }}/>
+          ))}
+        </div>
+      ) : trips.length === 0 ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 16, textAlign: "center" }}>
           <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 28, color: "var(--hh-linen-300)", letterSpacing: "-0.02em" }}>No trips yet.</div>
           <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14, color: "var(--hh-stone-400)", lineHeight: 1.5 }}>Plan your first Helsinki adventure.</div>

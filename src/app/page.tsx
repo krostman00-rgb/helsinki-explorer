@@ -3,9 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/providers/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
+import { Splash } from "@/components/Splash";
 
 // HelloHel wordmark — circle + dot + "hello·hel"
 function HhMark({ color = "currentColor" }: { color?: string }) {
@@ -22,23 +24,49 @@ function HhMark({ color = "currentColor" }: { color?: string }) {
 
 export default function WelcomePage() {
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
 
-  // If the user already has trips, skip straight to /trips
+  // While true → splash. Becomes false only after auth has resolved AND
+  // we've checked whether this user already has trips. This prevents the
+  // hero from flashing for users who'll immediately be redirected.
+  const [ready, setReady] = useState(false);
+
+  // Prefetch the four main nav routes as soon as the welcome page mounts,
+  // so the first tap into the app is instant regardless of which tab.
   useEffect(() => {
+    router.prefetch("/trips");
+    router.prefetch("/map");
+    router.prefetch("/profile");
+    router.prefetch("/me");
+    router.prefetch("/onboarding");
+  }, [router]);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    // No user → just show welcome hero (no need to check trips)
+    if (!user) { setReady(true); return; }
+
+    // User exists: check if they already have trips. If yes → redirect.
     (async () => {
       const sb = createClient();
-      const { data: { user } } = await sb.auth.getUser();
-      if (!user) return;
       const { count } = await sb
         .from("trips")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id);
-      if (count && count > 0) router.replace("/trips");
+      if (count && count > 0) {
+        router.replace("/trips");
+        // Keep splash visible during the navigation — don't flip ready
+        return;
+      }
+      setReady(true);
     })();
-  }, [router]);
+  }, [user, authLoading, router]);
+
+  if (!ready) return <Splash/>;
 
   return (
-    <div style={{ width: "100%", height: "calc(100dvh - 0px)", position: "relative", overflow: "hidden", background: "#F4EFE5" }}>
+    <div style={{ width: "100%", height: "calc(100dvh - 0px)", position: "relative", overflow: "hidden", background: "#F4EFE5", animation: "hh-fade-in 0.3s ease both" }}>
       {/* Full-bleed hero — Helsinki Cathedral alley, golden hour */}
       <div style={{ position: "absolute", inset: 0 }}>
         <Image

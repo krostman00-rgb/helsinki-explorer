@@ -217,13 +217,12 @@ export default function PassportPage() {
     else if (!authLoading) setLoading(false);
   }, [user, authLoading, loadData]);
 
-  if (loading || authLoading) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "calc(100dvh - 68px)", background: "#F0EDE6" }}>
-        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#A09880", letterSpacing: "0.12em" }}>Loading…</div>
-      </div>
-    );
-  }
+  // Render shell immediately — no blocking loading screen
+  const isLoading = loading || authLoading;
+  const sk = (children: React.ReactNode, width?: number) =>
+    isLoading
+      ? <span className="hh-skeleton" style={{ minWidth: width ?? 28, display: "inline-block" }}>{children}</span>
+      : children;
 
   const profile    = data?.profile;
   const trip       = data?.trip;
@@ -273,14 +272,14 @@ export default function PassportPage() {
             <svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#1A1611" strokeWidth="1.2"/><circle cx="7" cy="7" r="2.2" fill="#1A1611"/></svg>
             <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "#1A1611" }}>HELLO<span style={{ color: "#A09880" }}>·</span>HEL PASSPORT</span>
           </div>
-          <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: "#A09880", letterSpacing: "0.12em" }}>{passCode}</span>
+          <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: "#A09880", letterSpacing: "0.12em" }}>{sk(passCode, 110)}</span>
         </div>
 
         {/* Holder */}
         <div style={{ padding: "16px 18px 0" }}>
           <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8.5, color: "#A09880", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 4 }}>Holder</div>
           <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.01em", color: "#1A1611" }}>
-            {profile?.display_name ?? `Explorer #${shortId}.`}
+            {sk(profile?.display_name ?? `Explorer #${shortId}.`, 200)}
           </div>
           <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "#A09880", letterSpacing: "0.06em", marginTop: 4 }}>exploring Helsinki</div>
         </div>
@@ -293,11 +292,11 @@ export default function PassportPage() {
           <div style={{ display: "flex", gap: 28 }}>
             <div>
               <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8, color: "#A09880", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 3 }}>Issued</div>
-              <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, fontWeight: 700, color: "#1A1611", letterSpacing: "0.04em" }}>{issuedStr}</div>
+              <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, fontWeight: 700, color: "#1A1611", letterSpacing: "0.04em" }}>{sk(issuedStr, 86)}</div>
             </div>
             <div>
               <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8, color: "#A09880", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 3 }}>Expires</div>
-              <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, fontWeight: 700, color: "#1A1611", letterSpacing: "0.04em" }}>{expiresStr}</div>
+              <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, fontWeight: 700, color: "#1A1611", letterSpacing: "0.04em" }}>{sk(expiresStr, 86)}</div>
             </div>
           </div>
           <div style={{ color: "#1A1611" }}>{SKYLINE_SVG}</div>
@@ -310,7 +309,7 @@ export default function PassportPage() {
         <div style={{ flex: 1, background: "#FAFAF8", borderRadius: 16, border: "0.5px solid #DDD8CE", padding: "14px 14px 12px" }}>
           <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8.5, color: "#A09880", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 6 }}>Days</div>
           <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 26, lineHeight: 1, letterSpacing: "-0.02em", color: "#1A1611" }}>
-            {pad2(dayNum)}<span style={{ fontSize: 14, color: "#A09880" }}>/{pad2(totalDays || 1)}</span>
+            {sk(<>{pad2(dayNum)}<span style={{ fontSize: 14, color: "#A09880" }}>/{pad2(totalDays || 1)}</span></>, 56)}
           </div>
           <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8, color: "#A09880", letterSpacing: "0.1em", marginTop: 4 }}>in town</div>
         </div>
@@ -318,7 +317,7 @@ export default function PassportPage() {
         <div style={{ flex: 1, background: "#FAFAF8", borderRadius: 16, border: "0.5px solid #DDD8CE", padding: "14px 14px 12px" }}>
           <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8.5, color: "#A09880", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 6 }}>Visited</div>
           <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 26, lineHeight: 1, letterSpacing: "-0.02em", color: "#1A1611" }}>
-            {visited}
+            {sk(visited, 32)}
           </div>
           <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8, color: "#A09880", letterSpacing: "0.1em", marginTop: 4 }}>of {totalActs} planned</div>
         </div>
@@ -326,7 +325,7 @@ export default function PassportPage() {
         <div style={{ flex: 1, background: "#FAFAF8", borderRadius: 16, border: "0.5px solid #DDD8CE", padding: "14px 14px 12px" }}>
           <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8.5, color: "#A09880", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 6 }}>Points</div>
           <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 26, lineHeight: 1, letterSpacing: "-0.02em", color: "#1A1611" }}>
-            {totalPts}
+            {sk(totalPts, 40)}
           </div>
           {todayPts > 0 && (
             <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8, color: "#3F5A45", letterSpacing: "0.1em", marginTop: 4 }}>+{todayPts} today</div>

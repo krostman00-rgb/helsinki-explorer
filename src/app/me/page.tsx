@@ -194,18 +194,18 @@ export default function MePage() {
     router.push("/onboarding");
   };
 
-  if (loading || authLoading) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "calc(100dvh - 68px)", background: "#F4EFE5" }}>
-        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#8C8170", letterSpacing: "0.12em" }}>Loading…</div>
-      </div>
-    );
-  }
-
+  // No blocking loading screen — render shell immediately with skeletons
+  const isLoading = loading || authLoading;
   const name    = stats?.displayName ?? null;
   const avatarInitials = initials(name, user?.id.slice(-2).toUpperCase() ?? "EX");
   const shortId = user?.id.slice(-8).toUpperCase() ?? "--------";
   const tenure  = stats ? yearsMonths(stats.memberSince) : "exploring Helsinki";
+
+  // Inline skeleton helper
+  const sk = (children: React.ReactNode, width?: number) =>
+    isLoading
+      ? <span className="hh-skeleton" style={{ minWidth: width ?? 28, display: "inline-block" }}>{children}</span>
+      : children;
 
   return (
     <div className="hh-page-enter" style={{ background: "#F4EFE5", minHeight: "calc(100dvh - 68px)", overflowY: "auto", paddingBottom: 40 }}>
@@ -236,7 +236,9 @@ export default function MePage() {
               />
             ) : (
               <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 22, lineHeight: 1.1, color: "#FAF7F1", letterSpacing: "-0.01em", marginBottom: 3 }}>
-                {name ?? `Explorer #${shortId.slice(-4)}`}
+                {isLoading
+                  ? <span className="hh-skeleton" style={{ display: "inline-block", minWidth: 140 }}>Loading name</span>
+                  : (name ?? `Explorer #${shortId.slice(-4)}`)}
               </div>
             )}
             <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "rgba(250,247,241,0.4)", letterSpacing: "0.08em" }}>
@@ -275,7 +277,7 @@ export default function MePage() {
           { value: `${stats?.totalPoints ?? 0} pts`,      label: "earned"  },
         ].map(({ value, label }) => (
           <div key={label} style={{ flex: 1, background: "#FAF7F1", borderRadius: 14, padding: "12px 8px 10px", textAlign: "center", border: "0.5px solid #ECE5D6" }}>
-            <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 17, lineHeight: 1, letterSpacing: "-0.02em", color: "#1A1611", marginBottom: 4 }}>{value}</div>
+            <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 17, lineHeight: 1, letterSpacing: "-0.02em", color: "#1A1611", marginBottom: 4 }}>{sk(value, 38)}</div>
             <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8, color: "#8C8170", letterSpacing: "0.12em", textTransform: "uppercase" }}>{label}</div>
           </div>
         ))}
@@ -289,7 +291,7 @@ export default function MePage() {
           <div style={{ position: "absolute", right: 20, bottom: -30, width: 80, height: 80, borderRadius: "50%", background: "rgba(250,247,241,0.05)" }}/>
           <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8.5, color: "rgba(250,247,241,0.6)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 6 }}>Trips</div>
           <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 38, lineHeight: 0.9, letterSpacing: "-0.03em", color: "#FAF7F1", marginBottom: 8 }}>
-            {stats?.tripCount ?? 0}<span style={{ fontSize: 28, opacity: 0.6 }}>.</span>
+            {sk(stats?.tripCount ?? 0, 40)}<span style={{ fontSize: 28, opacity: 0.6 }}>.</span>
           </div>
           <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: "rgba(250,247,241,0.55)", letterSpacing: "0.06em" }}>{tenure}</div>
         </div>
@@ -298,7 +300,7 @@ export default function MePage() {
           <div style={{ position: "absolute", right: -10, bottom: -20, width: 100, height: 100, borderRadius: "50%", background: "rgba(250,247,241,0.06)" }}/>
           <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8.5, color: "rgba(250,247,241,0.6)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 6 }}>Badges</div>
           <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 38, lineHeight: 0.9, letterSpacing: "-0.03em", color: "#FAF7F1", marginBottom: 8 }}>
-            {stats?.unlockedBadges ?? 0}<span style={{ fontSize: 28, opacity: 0.6 }}>.</span>
+            {sk(stats?.unlockedBadges ?? 0, 40)}<span style={{ fontSize: 28, opacity: 0.6 }}>.</span>
           </div>
           <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: "rgba(250,247,241,0.55)", letterSpacing: "0.06em" }}>achievements unlocked</div>
         </div>

@@ -185,6 +185,28 @@
   0%, 100% { opacity: 0.5; }
   50%       { opacity: 1; }
 }
+.hh-skeleton {
+  display: inline-block;
+  background: linear-gradient(90deg, rgba(180,165,145,0.18) 0%, rgba(180,165,145,0.35) 50%, rgba(180,165,145,0.18) 100%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+  animation: hh-skeleton-shimmer 1.6s ease-in-out infinite;
+  color: transparent !important;
+}
+@keyframes hh-skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Fade in/out ────────────────────────────────────────────── */
+@keyframes hh-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes hh-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
 
 /* ── Nav active dot ─────────────────────────────────────────── */
 @keyframes hh-dot-pop {
