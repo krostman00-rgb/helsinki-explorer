@@ -116,8 +116,16 @@ function TripCardVisual({
 }
 
 // ── Swipeable + draggable wrapper around the card ──────────────────────
+// Activation threshold: card body stays still until the user has clearly
+// committed to a horizontal swipe of at least this many pixels. Below
+// this it doesn't react at all to small/accidental horizontal movement.
+const SWIPE_ACTIVATION = 32;
+// Commit threshold: release past this distance → open delete confirm.
+const SWIPE_COMMIT     = 140;
+
 function SwipeableTripCard({
   trip,
+  isPendingDelete,
   isDragging,
   draggableProps,
   dragHandleProps,
@@ -125,6 +133,7 @@ function SwipeableTripCard({
   onSwipeDelete,
 }: {
   trip: Trip;
+  isPendingDelete: boolean;
   isDragging: boolean;
   draggableProps: DraggableProvidedDraggableProps;
   dragHandleProps: DraggableProvidedDragHandleProps | null | undefined;
@@ -146,8 +155,18 @@ function SwipeableTripCard({
     // swipedRef stays true until next onClick clears it
   };
 
+  // When parent clears its pending-delete state (i.e. user pressed Cancel
+  // in the confirm sheet), spring the card back to its rest position.
+  useEffect(() => {
+    if (!isPendingDelete) {
+      setDx(0);
+      axisRef.current = null;
+      swipedRef.current = false;
+    }
+  }, [isPendingDelete]);
+
   const onPointerDown = (e: React.PointerEvent) => {
-    if (isDragging) return;
+    if (isDragging || isPendingDelete) return;
     // ignore swipes that begin on the reorder grip
     if ((e.target as HTMLElement).closest("[data-trip-grip]")) return;
     startXRef.current = e.clientX;
@@ -160,18 +179,31 @@ function SwipeableTripCard({
     if (startXRef.current === null || startYRef.current === null) return;
     const dxRaw = e.clientX - startXRef.current;
     const dyRaw = e.clientY - startYRef.current;
-    if (!axisRef.current && (Math.abs(dxRaw) > 8 || Math.abs(dyRaw) > 8)) {
-      axisRef.current = Math.abs(dxRaw) > Math.abs(dyRaw) ? "x" : "y";
+
+    // Only lock onto the swipe axis when horizontal movement is BOTH
+    // large enough AND clearly dominant over vertical — otherwise let
+    // it be a vertical scroll / tap.
+    if (!axisRef.current) {
+      if (dxRaw > SWIPE_ACTIVATION && dxRaw > Math.abs(dyRaw) * 1.4) {
+        axisRef.current = "x";
+      } else if (Math.abs(dyRaw) > 12 || dxRaw < 0) {
+        axisRef.current = "y"; // give up — not a delete swipe
+      }
     }
-    if (axisRef.current === "x" && dxRaw > 0) {
-      setDx(Math.min(dxRaw, 320));
-      swipedRef.current = true;
+
+    if (axisRef.current === "x") {
+      // Subtract activation distance so the card doesn't pop from 0 → 32
+      const visible = Math.max(0, Math.min(dxRaw - SWIPE_ACTIVATION, 320));
+      setDx(visible);
+      if (visible > 0) swipedRef.current = true;
     }
   };
 
   const onPointerUp = () => {
-    if (axisRef.current === "x" && dx > 140) {
-      // Animate off-screen then trigger delete-confirm
+    if (axisRef.current === "x" && dx > SWIPE_COMMIT) {
+      // Animate off-screen, then notify parent. Parent opens confirm sheet
+      // and sets isPendingDelete=true for this card, which holds dx high
+      // until the user either confirms (unmount) or cancels (spring back).
       setDx(480);
       setTimeout(() => onSwipeDelete(trip), 220);
       return;
@@ -189,8 +221,8 @@ function SwipeableTripCard({
     router.push(`/trips/${trip.id}`);
   };
 
-  const swipeProgress = Math.min(dx / 140, 1);
-  const willDelete    = dx > 140;
+  const swipeProgress = Math.min(dx / SWIPE_COMMIT, 1);
+  const willDelete    = dx > SWIPE_COMMIT;
 
   return (
     <div
@@ -209,7 +241,7 @@ function SwipeableTripCard({
         background: willDelete ? "#C0392B" : "rgba(192,57,43,0.78)",
         display: "flex", alignItems: "center", gap: 10, paddingLeft: 24,
         opacity: swipeProgress,
-        transition: "background 0.15s",
+        transition: "background 0.15s, opacity 0.2s",
         pointerEvents: "none",
       }}>
         <Trash2 size={20} color="#FAF7F1" strokeWidth={1.6}/>
@@ -227,7 +259,10 @@ function SwipeableTripCard({
         onClick={handleClick}
         style={{
           transform: `translateX(${dx}px)`,
-          transition: dx === 0 || dx >= 320 ? "transform 0.25s cubic-bezier(0.32,0.72,0,1)" : "none",
+          transition:
+            dx === 0 || dx >= 320 || isPendingDelete === false
+              ? "transform 0.28s cubic-bezier(0.32,0.72,0,1)"
+              : "none",
           cursor: "pointer",
         }}
       >
@@ -320,7 +355,10 @@ export default function TripsPage() {
 
   const showLoading = authLoading || isLoading;
 
-  // Trip list body — memoised so we don't rebuild dnd context unnecessarily
+  // Trip list body — re-renders when confirmTrip changes so cards know
+  // whether they're currently in the confirm-sheet state (and spring
+  // back if it clears).
+  const pendingId = confirmTrip?.id ?? null;
   const listBody = useMemo(() => {
     if (trips.length === 0) return null;
     return (
@@ -333,6 +371,7 @@ export default function TripsPage() {
                   {(prov, snapshot) => (
                     <SwipeableTripCard
                       trip={trip}
+                      isPendingDelete={pendingId === trip.id}
                       isDragging={snapshot.isDragging}
                       draggableProps={prov.draggableProps}
                       dragHandleProps={prov.dragHandleProps}
@@ -348,7 +387,7 @@ export default function TripsPage() {
         </Droppable>
       </DragDropContext>
     );
-  }, [trips]);
+  }, [trips, pendingId]);
 
   return (
     <div className="hh-page-enter" style={{ background: "var(--hh-linen-100)", minHeight: "calc(100dvh - 68px)", padding: "48px 20px 40px" }}>

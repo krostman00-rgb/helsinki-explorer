@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
 import { Splash } from "@/components/Splash";
+import { preloadPlaces } from "@/lib/places-cache";
 
 // HelloHel wordmark — circle + dot + "hello·hel"
 function HhMark({ color = "currentColor" }: { color?: string }) {
@@ -33,12 +34,15 @@ export default function WelcomePage() {
 
   // Prefetch the four main nav routes as soon as the welcome page mounts,
   // so the first tap into the app is instant regardless of which tab.
+  // Also kick off the /places fetch — by the time the user reaches the
+  // Discover step in onboarding, places are already cached.
   useEffect(() => {
     router.prefetch("/trips");
     router.prefetch("/map");
     router.prefetch("/profile");
     router.prefetch("/me");
     router.prefetch("/onboarding");
+    preloadPlaces();
   }, [router]);
 
   useEffect(() => {

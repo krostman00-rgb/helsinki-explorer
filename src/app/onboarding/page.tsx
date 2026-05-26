@@ -11,6 +11,7 @@ import { differenceInCalendarDays, parseISO, format } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { generateTripDays } from "@/lib/trip-generator";
+import { preloadPlaces, getPlaces } from "@/lib/places-cache";
 import type { Place } from "@/types/database.types";
 
 // ── Shared chrome ────────────────────────────────────────────
@@ -615,20 +616,16 @@ function StepAccommodation({
   const debounceRef                 = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selected                    = !!accommodationName;
 
-  // Fetch nearby places when accommodation selected
+  // Fetch nearby places when accommodation selected (uses cache)
   useEffect(() => {
     if (!accommodationLat || !accommodationLng) return;
-    createClient()
-      .from("places")
-      .select("name, category, lat, lng")
-      .then(({ data }) => {
-        if (!data) return;
-        const sorted = data
-          .map(p => ({ name: p.name, category: p.category, distanceM: haversineMeters(accommodationLat, accommodationLng, p.lat, p.lng) }))
-          .sort((a, b) => a.distanceM - b.distanceM)
-          .slice(0, 3);
-        setNearby(sorted);
-      });
+    getPlaces().then(data => {
+      const sorted = data
+        .map(p => ({ name: p.name, category: p.category, distanceM: haversineMeters(accommodationLat, accommodationLng, p.lat, p.lng) }))
+        .sort((a, b) => a.distanceM - b.distanceM)
+        .slice(0, 3);
+      setNearby(sorted);
+    });
   }, [accommodationLat, accommodationLng]);
 
   // Nominatim geocoding with debounce
@@ -880,18 +877,14 @@ function StepDiscover({
     };
     const wantedCategories = new Set(interests.flatMap(i => INTEREST_CATEGORIES[i] ?? []));
 
-    createClient()
-      .from("places")
-      .select("*")
-      .then(({ data, error }) => {
-        if (error) { console.error("Discover fetch error:", error.message); return; }
-        if (data) {
-          const filtered = data.filter(p => (p.price_level ?? 1) <= budgetLevel);
-          const matched   = filtered.filter(p => wantedCategories.has(p.category)).sort(() => Math.random() - 0.5);
-          const unmatched = filtered.filter(p => !wantedCategories.has(p.category)).sort(() => Math.random() - 0.5);
-          setDeck([...matched, ...unmatched]);
-        }
-      });
+    // Uses shared places cache — typically already loaded by the time
+    // the user reaches the Discover step
+    getPlaces().then(data => {
+      const filtered  = data.filter(p => (p.price_level ?? 1) <= budgetLevel);
+      const matched   = filtered.filter(p => wantedCategories.has(p.category)).sort(() => Math.random() - 0.5);
+      const unmatched = filtered.filter(p => !wantedCategories.has(p.category)).sort(() => Math.random() - 0.5);
+      setDeck([...matched, ...unmatched]);
+    });
   }, [budgetLevel, interests]);
 
   // Preload the next 3 images whenever idx changes
@@ -956,10 +949,32 @@ function StepDiscover({
   const nextCard = deck[idx + 1] ?? deck[0];
 
   if (!current) {
+    // Skeleton card — matches the real card layout so the transition is
+    // seamless once the places list arrives from the cache.
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "var(--hh-linen-100)" }}>
-        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 12, color: "var(--hh-stone-500)", letterSpacing: "0.1em" }}>Loading picks…</div>
-      </div>
+      <OnbChrome step={6} total={6} onBack={onBack} cta={null}>
+        <div style={{ padding: "0 24px" }}>
+          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-500)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 14 }}>
+            Chapter 06 · Discover
+          </div>
+          <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 42, lineHeight: 0.96, letterSpacing: "-0.022em", color: "var(--hh-ink-900)" }}>
+            {headlineRef}
+          </div>
+          <p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.5, color: "var(--hh-ink-700)" }}>
+            Swipe right to add, left to skip.
+          </p>
+        </div>
+        <div style={{ position: "relative", margin: "32px 24px 0", height: 420 }}>
+          {/* Back-card skeleton */}
+          <div className="hh-skeleton" style={{ position: "absolute", inset: 0, borderRadius: 22, transform: "scale(0.94) translateY(12px)", opacity: 0.7 }}/>
+          {/* Front-card skeleton */}
+          <div className="hh-skeleton" style={{ position: "absolute", inset: 0, borderRadius: 22 }}/>
+        </div>
+        <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 28 }}>
+          <div className="hh-skeleton" style={{ width: 56, height: 56, borderRadius: 999 }}/>
+          <div className="hh-skeleton" style={{ width: 56, height: 56, borderRadius: 999 }}/>
+        </div>
+      </OnbChrome>
     );
   }
 
@@ -1223,6 +1238,11 @@ function StepInterests({ value, onChange, onNext, isSubmitting, onBack }: { valu
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, authError } = useAuth();
+
+  // Kick off the /places fetch immediately when the user lands on step 1.
+  // By the time they reach the Discover step (5+ taps later), the cache is
+  // populated and the deck appears instantly instead of after a 5–10 s wait.
+  useEffect(() => { preloadPlaces(); }, []);
 
   const [step, setStep]                   = useState(1);
   const [durationDays, setDurationDays]   = useState(3);
