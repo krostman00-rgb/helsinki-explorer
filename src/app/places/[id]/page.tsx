@@ -183,7 +183,7 @@ export default function PlaceInfoPage() {
   const nextSection = () => { sectionIdx++; return String(sectionIdx).padStart(2, "0"); };
 
   return (
-    <div style={{ background: "var(--hh-linen-100)", minHeight: "100dvh", paddingBottom: 96, overflowX: "hidden" }}>
+    <div style={{ background: "var(--hh-linen-50)", minHeight: "100dvh", paddingBottom: 150, overflowX: "hidden" }}>
 
       {/* ── Hero image ─────────────────────────────────────── */}
       <div style={{ position: "relative", height: "42dvh", minHeight: 260, maxHeight: 380, overflow: "hidden", background: catColor + "33" }}>
@@ -417,16 +417,17 @@ export default function PlaceInfoPage() {
         </div>
       </div>
 
-      {/* ── Sticky bottom CTAs ───────────────────────────── */}
+      {/* ── Sticky bottom CTAs (above BottomNav) ──────────── */}
       <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0,
+        position: "fixed", bottom: 68, left: 0, right: 0,
         padding: "12px 20px",
-        paddingBottom: "max(20px, env(safe-area-inset-bottom, 16px))",
+        paddingBottom: "12px",
         background: "rgba(250,247,241,0.96)",
         borderTop: "0.5px solid var(--hh-linen-300)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
         display: "flex", gap: 10,
+        zIndex: 40,
       }}>
         <a
           href={directionsUrl}
