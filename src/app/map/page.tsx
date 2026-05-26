@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   Coffee, Utensils, Flame, Landmark, TreePine, Building2, Gem, Moon, ShoppingBag, Users, History, CalendarDays,
@@ -81,6 +82,7 @@ async function fetchTransitLeg(
 
 export default function MapPage() {
   const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
 
   const [trip, setTrip]           = useState<Trip | null>(null);
   const [days, setDays]           = useState<DayWithActivities[]>([]);
@@ -472,7 +474,23 @@ export default function MapPage() {
                         }
                       </div>
                     </div>
-                    <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 16, lineHeight: 1.15, color: active ? "#FAF7F1" : "var(--hh-ink-900)", marginBottom: 4, letterSpacing: "-0.01em" }}>{act.places?.name ?? "—"}</div>
+                    {/* Title text — tapping it opens the place-info page */}
+                    <div
+                      onClick={(e) => {
+                        if (!act.place_id) return;
+                        e.stopPropagation();
+                        router.push(`/places/${act.place_id}`);
+                      }}
+                      style={{
+                        fontFamily: "var(--font-instrument-serif), Georgia, serif",
+                        fontSize: 16, lineHeight: 1.15,
+                        color: active ? "#FAF7F1" : "var(--hh-ink-900)",
+                        marginBottom: 4, letterSpacing: "-0.01em",
+                        cursor: act.place_id ? "pointer" : "default",
+                      }}
+                    >
+                      {act.places?.name ?? "—"}
+                    </div>
                     <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9, color: active ? "rgba(250,247,241,0.45)" : "var(--hh-stone-400)", letterSpacing: "0.1em", textTransform: "uppercase" }}>{cat}</div>
                   </button>
                   {/* Transit connector to next stop */}
