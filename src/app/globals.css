@@ -180,6 +180,12 @@
   animation: hh-slide-down 0.25s ease forwards;
 }
 
+/* ── Skeleton shimmer ───────────────────────────────────────── */
+@keyframes hh-skeleton-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+
 /* ── Nav active dot ─────────────────────────────────────────── */
 @keyframes hh-dot-pop {
   from { transform: scale(0); opacity: 0; }

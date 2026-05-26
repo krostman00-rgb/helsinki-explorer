@@ -6,15 +6,16 @@ import { useEffect } from "react";
 
 const HIDDEN_ON = ["/", "/onboarding", "/discover"];
 
-// Lucide Luggage path (inline SVG to avoid extra bundle hit)
+// Lucide Luggage icon (exact paths from lucide-luggage-icon)
 function LuggageIcon({ active }: { active: boolean }) {
   const w = active ? 2 : 1.5;
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <rect x="5" y="9" width="14" height="13" rx="2" stroke="currentColor" strokeWidth={w}/>
-      <path d="M9 9V6a3 3 0 016 0v3" stroke="currentColor" strokeWidth={w} strokeLinecap="round"/>
-      <line x1="12" y1="13" x2="12" y2="18" stroke="currentColor" strokeWidth={w} strokeLinecap="round"/>
-      <line x1="9" y1="15.5" x2="15" y2="15.5" stroke="currentColor" strokeWidth={w} strokeLinecap="round"/>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 20a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2" stroke="currentColor" strokeWidth={w}/>
+      <path d="M8 18V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14" stroke="currentColor" strokeWidth={w}/>
+      <path d="M10 20h4" stroke="currentColor" strokeWidth={w}/>
+      <circle cx="16" cy="20" r="2" stroke="currentColor" strokeWidth={w}/>
+      <circle cx="8" cy="20" r="2" stroke="currentColor" strokeWidth={w}/>
     </svg>
   );
 }
@@ -77,7 +78,7 @@ export function BottomNav() {
       borderTop: "0.5px solid rgba(180,165,145,0.3)",
       backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
     }}>
-      <ul style={{ display: "flex", height: 68, alignItems: "stretch", margin: 0, padding: 0, listStyle: "none" }}>
+      <ul style={{ display: "flex", height: 68, alignItems: "stretch", margin: 0, padding: "0 12px", listStyle: "none" }}>
         {NAV_ITEMS.map(({ href, label, icon }) => {
           const isActive = pathname === href || pathname.startsWith(href);
           return (

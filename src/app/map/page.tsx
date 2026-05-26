@@ -87,7 +87,8 @@ export default function MapPage() {
   const [dayIdx, setDayIdx]       = useState(0);
   const [selectedIdx, setSelectedIdx] = useState(0);
   // view state removed — always map
-  const [isLoading, setLoading]   = useState(true);
+  // tripLoading: true while we're waiting for auth + trip data (controls bottom strip skeleton)
+  const [tripLoading, setTripLoading] = useState(true);
 
   const [allPlaces, setAllPlaces]         = useState<MapPlace[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null);
@@ -122,7 +123,7 @@ export default function MapPage() {
 
     // Fetch trip only if user is available
     if (!user) {
-      if (!authLoading) setLoading(false);
+      if (!authLoading) setTripLoading(false);
       return;
     }
 
@@ -135,7 +136,7 @@ export default function MapPage() {
         .limit(1)
         .single();
 
-      if (!tripData) { setLoading(false); return; }
+      if (!tripData) { setTripLoading(false); return; }
       setTrip(tripData);
 
       // Set accommodation marker if available
@@ -153,7 +154,7 @@ export default function MapPage() {
         .eq("trip_id", tripData.id)
         .order("day_number", { ascending: true });
       setDays((daysData as unknown as DayWithActivities[]) ?? []);
-      setLoading(false);
+      setTripLoading(false);
     })();
   }, [user, authLoading]);
 
@@ -237,13 +238,7 @@ export default function MapPage() {
     setTimeout(() => setToast(null), 3200);
   }, [user, trip]);
 
-  if (isLoading) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "calc(100dvh - 68px)", background: "#EDE8DC" }}>
-        <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "var(--hh-stone-400)", letterSpacing: "0.12em" }}>Loading…</div>
-      </div>
-    );
-  }
+  // No blocking loading screen — map renders immediately, trip data fills in async
 
   const dayName = currentDay?.date
     ? (DAY_NAMES[new Date(currentDay.date + "T12:00:00").getDay()] ?? "—")
@@ -287,7 +282,7 @@ export default function MapPage() {
                 </span>
               </div>
             ) : (
-              /* Multi-day: show D01 D02… buttons */
+              /* Multi-day: show Day 1, Day 2… buttons */
               days.map((d, i) => (
                 <button
                   key={d.id}
@@ -298,14 +293,14 @@ export default function MapPage() {
                     backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
                     boxShadow: "0 2px 16px rgba(26,22,17,0.10)",
                     cursor: "pointer",
-                    fontFamily: "var(--font-geist-mono)", fontSize: 11,
+                    fontFamily: "var(--font-geist-sans)", fontSize: 13, fontWeight: 500,
                     color: i === dayIdx ? "#FAF7F1" : "#4A3F33",
-                    letterSpacing: "0.08em",
+                    letterSpacing: "0.01em",
                     transition: "background 0.18s, color 0.18s",
                     flex: "0 0 auto",
                   }}
                 >
-                  D{pad2(d.day_number)}
+                  Day {d.day_number}
                 </button>
               ))
             )}
@@ -497,8 +492,15 @@ export default function MapPage() {
         </div>
       )}
 
+      {/* ── Bottom: skeleton while trip data loads ── */}
+      {tripLoading && (
+        <div style={{ position: "absolute", bottom: 20, left: 16, right: 16, zIndex: 20 }}>
+          <div style={{ background: "rgba(250,247,241,0.82)", backdropFilter: "blur(12px)", borderRadius: 20, height: 72, animation: "hh-skeleton-pulse 1.4s ease-in-out infinite" }}/>
+        </div>
+      )}
+
       {/* ── Bottom: no trip CTA ── */}
-      {!trip && !selectedPlace && (
+      {!tripLoading && !trip && !selectedPlace && (
         <div style={{ position: "absolute", bottom: 20, left: 16, right: 16, zIndex: 20 }}>
           <div style={{ background: "rgba(250,247,241,0.94)", backdropFilter: "blur(12px)", borderRadius: 20, border: "0.5px solid rgba(180,165,145,0.3)", boxShadow: "0 4px 20px rgba(26,22,17,0.12)", padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
