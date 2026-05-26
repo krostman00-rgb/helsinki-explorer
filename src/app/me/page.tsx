@@ -3,7 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
+import { useSettings } from "@/providers/SettingsProvider";
 import { createClient } from "@/lib/supabase/client";
+import { CURRENCIES } from "@/lib/settings";
+import type { Currency, Units } from "@/lib/settings";
 
 const VERSION = "v0.1";
 
@@ -106,6 +109,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
 export default function MePage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const { currency, units, setCurrency, setUnits } = useSettings();
 
   const [stats, setStats]         = useState<MeStats | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -339,18 +343,49 @@ export default function MePage() {
         </div>
       </div>
 
+      {/* ── Currency & Units cards ── */}
+      <div style={{ display: "flex", gap: 10, margin: "0 16px 12px" }}>
+        {/* Currency */}
+        <div style={{ flex: 1, background: "#FAF7F1", borderRadius: 18, padding: "16px 14px 14px", border: "0.5px solid #ECE5D6" }}>
+          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8.5, color: "#8C8170", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 6 }}>Currency</div>
+          <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 24, lineHeight: 1, color: "#1A1611", marginBottom: 12 }}>
+            {CURRENCIES.find(c => c.code === currency)?.label ?? "Euro"}<span style={{ opacity: 0.3 }}>.</span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+            {CURRENCIES.map(c => (
+              <button
+                key={c.code}
+                onClick={() => setCurrency(c.code as Currency)}
+                style={{ padding: "4px 10px", borderRadius: 999, border: `0.5px solid ${c.code === currency ? "#1A1611" : "#DDD2BC"}`, background: c.code === currency ? "#1A1611" : "transparent", fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: c.code === currency ? "#FAF7F1" : "#8C8170", cursor: "pointer", letterSpacing: "0.06em" }}
+              >
+                {c.shortLabel}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Units */}
+        <div style={{ flex: 1, background: "#FAF7F1", borderRadius: 18, padding: "16px 14px 14px", border: "0.5px solid #ECE5D6" }}>
+          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8.5, color: "#8C8170", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 6 }}>Units</div>
+          <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 24, lineHeight: 1, color: "#1A1611", marginBottom: 12 }}>
+            {units === "metric" ? "Metric" : "Imperial"}<span style={{ opacity: 0.3 }}>.</span>
+          </div>
+          <div style={{ display: "flex", gap: 5 }}>
+            {(["metric", "imperial"] as Units[]).map(u => (
+              <button
+                key={u}
+                onClick={() => setUnits(u)}
+                style={{ padding: "4px 10px", borderRadius: 999, border: `0.5px solid ${u === units ? "#1A1611" : "#DDD2BC"}`, background: u === units ? "#1A1611" : "transparent", fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: u === units ? "#FAF7F1" : "#8C8170", cursor: "pointer", letterSpacing: "0.06em" }}
+              >
+                {u === "metric" ? "km · m" : "mi · ft"}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* ── Settings list ── */}
       <div style={{ margin: "0 16px 10px", background: "#FAF7F1", borderRadius: 18, border: "0.5px solid #ECE5D6", overflow: "hidden" }}>
-        <SettingRow
-          icon={<CurrencyIcon/>}
-          label="Currency"
-          value="EUR"
-        />
-        <SettingRow
-          icon={<UnitsIcon/>}
-          label="Units"
-          value="km · °C"
-        />
         <SettingRow
           icon={<BellIcon/>}
           label="Notifications"

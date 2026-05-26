@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Place, Json } from "@/types/database.types";
 import { Phone, Mail, Ticket } from "lucide-react";
+import { useSettings } from "@/providers/SettingsProvider";
+import { convertPricingText, formatBudgetRange } from "@/lib/settings";
 
 // ── Opening hours helpers ─────────────────────────────────────
 const SHORT_K = ["sun","mon","tue","wed","thu","fri","sat"] as const;
@@ -168,6 +170,8 @@ export default function PlaceInfoPage() {
     );
   }
 
+  const { currency } = useSettings();
+
   const todayHours = getTodayHours(place.opening_hours);
   const allHours   = getAllHours(place.opening_hours);
   const openNow    = todayHours ? isOpenNow(todayHours) : null;
@@ -309,6 +313,11 @@ export default function PlaceInfoPage() {
                 <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "rgba(26,22,17,0.55)" }}>
                   {PRICE_LABEL[place.price_level]}
                 </div>
+                {currency !== "EUR" && (
+                  <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: "rgba(26,22,17,0.45)", marginTop: 4 }}>
+                    ~ {formatBudgetRange(place.price_level, currency)}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -340,7 +349,7 @@ export default function PlaceInfoPage() {
             <>
               <SectionHeader number={nextSection()} title="Pricing"/>
               <p style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14.5, lineHeight: 1.65, color: "var(--hh-ink-700)", margin: "0 0 28px", whiteSpace: "pre-wrap" }}>
-                {place.pricing_info}
+                {convertPricingText(place.pricing_info, currency)}
               </p>
             </>
           )}

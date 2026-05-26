@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, ArrowRight, Trash2 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
+import { useSettings } from "@/providers/SettingsProvider";
 import { createClient } from "@/lib/supabase/client";
 import type { Trip } from "@/types/database.types";
+import { formatBudgetRange } from "@/lib/settings";
 
 const BUDGET_MARK: Record<number, string> = { 1: "€", 2: "€€", 3: "€€€" };
 
@@ -49,7 +51,9 @@ function DeleteConfirm({ trip, onConfirm, onCancel }: { trip: Trip; onConfirm: (
 }
 
 function TripCard({ trip, onDeleteRequest }: { trip: Trip; onDeleteRequest: (t: Trip) => void }) {
+  const { currency } = useSettings();
   const budget = BUDGET_MARK[trip.budget_level] ?? "€";
+  const budgetRange = currency !== "EUR" ? formatBudgetRange(trip.budget_level, currency) : null;
   const status = trip.status ?? "planning";
 
   return (
@@ -79,6 +83,11 @@ function TripCard({ trip, onDeleteRequest }: { trip: Trip; onDeleteRequest: (t: 
             <div>
               <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 32, lineHeight: 0.9, letterSpacing: "-0.01em", color: "var(--hh-copper-600)" }}>{budget}</div>
               <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: "var(--hh-stone-400)", letterSpacing: "0.1em", marginTop: 3 }}>BUDGET</div>
+              {budgetRange && (
+                <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 8.5, color: "var(--hh-stone-400)", marginTop: 2, letterSpacing: "0.04em" }}>
+                  ~{budgetRange}
+                </div>
+              )}
             </div>
             <div style={{ width: "0.5px", background: "var(--hh-linen-300)", alignSelf: "stretch" }}/>
             <div style={{ display: "flex", alignItems: "center" }}>
