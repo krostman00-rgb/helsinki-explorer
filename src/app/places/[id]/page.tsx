@@ -6,7 +6,12 @@ import { createClient } from "@/lib/supabase/client";
 import type { Place, Json } from "@/types/database.types";
 import { Phone, Mail, Ticket } from "lucide-react";
 import { useSettings } from "@/providers/SettingsProvider";
-import { convertPricingText, formatBudgetRange } from "@/lib/settings";
+import {
+  convertPricingText,
+  formatBudgetRange,
+  formatConvertedAmount,
+} from "@/lib/settings";
+import type { Currency } from "@/lib/settings";
 
 // ── Opening hours helpers ─────────────────────────────────────
 const SHORT_K = ["sun","mon","tue","wed","thu","fri","sat"] as const;
@@ -63,8 +68,27 @@ function hoursLeft(closeTime: string): string {
   return String(Math.floor(diff / 60));
 }
 
+// ── Pricing items ─────────────────────────────────────────────
+type PricingItem = { label: string; price_eur: number | null };
+
+function parsePricingItems(raw: Json | null): PricingItem[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const items: PricingItem[] = [];
+  for (const r of raw) {
+    if (typeof r !== "object" || r === null || Array.isArray(r)) continue;
+    const entry = r as { label?: unknown; price_eur?: unknown };
+    const label = typeof entry.label === "string" ? entry.label.trim() : "";
+    if (!label) continue;
+    items.push({
+      label,
+      price_eur: typeof entry.price_eur === "number" ? entry.price_eur : null,
+    });
+  }
+  return items.length > 0 ? items : null;
+}
+
 // ── UI constants ──────────────────────────────────────────────
-const PRICE_MARK: Record<number, string> = { 1: "€", 2: "€€", 3: "€€€" };
+const PRICE_MARK: Record<number, string>  = { 1: "€", 2: "€€", 3: "€€€" };
 const PRICE_LABEL: Record<number, string> = { 1: "Budget-friendly", 2: "Mid-range", 3: "Splurge" };
 
 const CAT_LABEL: Record<string, string> = {
@@ -102,20 +126,21 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function SectionHeader({ number, title }: { number: string; title: string }) {
+// No number prefix — just title + line
+function SectionHeader({ title }: { title: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-      <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "var(--hh-stone-400)", letterSpacing: "0.1em", flex: "0 0 auto" }}>{number}</span>
-      <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 24, lineHeight: 1, letterSpacing: "-0.01em", color: "var(--hh-ink-900)", fontStyle: "italic", flex: "0 0 auto" }}>{title}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+      <span style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 24, lineHeight: 1, letterSpacing: "-0.01em", color: "var(--hh-ink-900)", fontStyle: "italic", flex: "0 0 auto" }}>
+        {title}
+      </span>
       <div style={{ flex: 1, height: 0.5, background: "var(--hh-linen-300)" }}/>
     </div>
   );
 }
 
 function HoursTable({ hours }: { hours: Partial<Record<string, DayHours>> }) {
-  // today index where 0=Mon (convert from JS 0=Sun)
   const todayJS  = new Date().getDay();
-  const todayIdx = (todayJS + 6) % 7;
+  const todayIdx = (todayJS + 6) % 7; // 0=Mon
 
   return (
     <div style={{ marginBottom: 28 }}>
@@ -137,11 +162,95 @@ function HoursTable({ hours }: { hours: Partial<Record<string, DayHours>> }) {
   );
 }
 
+function PricingTable({ items, currency }: { items: PricingItem[]; currency: Currency }) {
+  return (
+    <div style={{ marginBottom: 28, borderRadius: 16, border: "0.5px solid var(--hh-linen-300)", overflow: "hidden" }}>
+      {items.map((item, i) => {
+        const isLast    = i === items.length - 1;
+        const isFree    = item.price_eur === null;
+        const hasConv   = !isFree && currency !== "EUR";
+
+        return (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: hasConv ? "flex-start" : "center",
+              justifyContent: "space-between",
+              gap: 16,
+              padding: "13px 16px",
+              borderBottom: isLast ? "none" : "0.5px solid var(--hh-linen-200)",
+              background: i % 2 === 0 ? "var(--hh-linen-50)" : "rgba(180,165,145,0.05)",
+            }}
+          >
+            {/* Label */}
+            <span style={{
+              fontFamily: "var(--font-geist-sans)",
+              fontSize: 13.5,
+              lineHeight: 1.45,
+              color: "var(--hh-ink-700)",
+              flex: 1,
+            }}>
+              {item.label}
+            </span>
+
+            {/* Price */}
+            <div style={{ flex: "0 0 auto", textAlign: "right", minWidth: 72 }}>
+              {isFree ? (
+                <span style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "3px 11px",
+                  borderRadius: 999,
+                  background: "#1A4B7A",
+                  color: "#EEF5FF",
+                  fontFamily: "var(--font-geist-mono)",
+                  fontSize: 10.5,
+                  letterSpacing: "0.1em",
+                  fontWeight: 500,
+                }}>
+                  Free
+                </span>
+              ) : (
+                <>
+                  <div style={{
+                    fontFamily: "var(--font-geist-mono)",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "var(--hh-ink-900)",
+                  }}>
+                    €{item.price_eur! % 1 === 0
+                      ? item.price_eur
+                      : item.price_eur!.toFixed(2)}
+                  </div>
+                  {hasConv && (
+                    <div style={{
+                      fontFamily: "var(--font-geist-mono)",
+                      fontSize: 10,
+                      color: "var(--hh-stone-400)",
+                      marginTop: 2,
+                      whiteSpace: "nowrap",
+                    }}>
+                      ~ {formatConvertedAmount(item.price_eur!, currency)}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────
 export default function PlaceInfoPage() {
-  const params = useParams<{ id: string }>();
-  const router = useRouter();
-  const [place, setPlace] = useState<Place | null>(null);
+  const params  = useParams<{ id: string }>();
+  const router  = useRouter();
+  const { currency } = useSettings();   // ← must be before conditional returns
+
+  const [place,   setPlace]   = useState<Place | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -170,21 +279,17 @@ export default function PlaceInfoPage() {
     );
   }
 
-  const { currency } = useSettings();
-
-  const todayHours = getTodayHours(place.opening_hours);
-  const allHours   = getAllHours(place.opening_hours);
-  const openNow    = todayHours ? isOpenNow(todayHours) : null;
-  const tags       = (place.tags as string[]) ?? [];
-  const catLabel   = CAT_LABEL[place.category] ?? place.category;
-  const catColor   = CAT_COLOR[place.category] ?? "#B5A992";
+  const todayHours   = getTodayHours(place.opening_hours);
+  const allHours     = getAllHours(place.opening_hours);
+  const openNow      = todayHours ? isOpenNow(todayHours) : null;
+  const tags         = (place.tags as string[]) ?? [];
+  const catLabel     = CAT_LABEL[place.category] ?? place.category;
+  const catColor     = CAT_COLOR[place.category] ?? "#B5A992";
+  const pricingItems = parsePricingItems(place.pricing_items ?? null);
 
   const directionsUrl = place.address
     ? `https://maps.google.com/?q=${encodeURIComponent(place.address + ", Helsinki")}`
     : `https://maps.google.com/?q=${place.lat},${place.lng}`;
-
-  let sectionIdx = 0;
-  const nextSection = () => { sectionIdx++; return String(sectionIdx).padStart(2, "0"); };
 
   return (
     <div style={{ background: "var(--hh-linen-50)", minHeight: "100dvh", paddingBottom: 150, overflowX: "hidden" }}>
@@ -199,7 +304,6 @@ export default function PlaceInfoPage() {
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         )}
-        {/* gradient */}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,15,25,0.38) 0%, transparent 45%, rgba(10,15,25,0.12) 100%)" }}/>
 
         {/* Back button */}
@@ -329,7 +433,7 @@ export default function PlaceInfoPage() {
           {/* Description */}
           {place.description && (
             <>
-              <SectionHeader number={nextSection()} title="Why this"/>
+              <SectionHeader title="Why this"/>
               <p style={{ fontFamily: "var(--font-geist-sans)", fontSize: 15, lineHeight: 1.7, color: "var(--hh-ink-700)", margin: "0 0 28px" }}>
                 {place.description}
               </p>
@@ -339,25 +443,30 @@ export default function PlaceInfoPage() {
           {/* Hours table */}
           {allHours && Object.keys(allHours).length > 0 && (
             <>
-              <SectionHeader number={nextSection()} title="Hours"/>
+              <SectionHeader title="Hours"/>
               <HoursTable hours={allHours}/>
             </>
           )}
 
-          {/* Pricing info */}
-          {place.pricing_info && (
+          {/* Pricing — structured table (preferred) or legacy text fallback */}
+          {pricingItems && pricingItems.length > 0 ? (
             <>
-              <SectionHeader number={nextSection()} title="Pricing"/>
+              <SectionHeader title="Pricing"/>
+              <PricingTable items={pricingItems} currency={currency}/>
+            </>
+          ) : place.pricing_info ? (
+            <>
+              <SectionHeader title="Pricing"/>
               <p style={{ fontFamily: "var(--font-geist-sans)", fontSize: 14.5, lineHeight: 1.65, color: "var(--hh-ink-700)", margin: "0 0 28px", whiteSpace: "pre-wrap" }}>
                 {convertPricingText(place.pricing_info, currency)}
               </p>
             </>
-          )}
+          ) : null}
 
           {/* Contact */}
           {(place.phone || place.email) && (
             <>
-              <SectionHeader number={nextSection()} title="Contact"/>
+              <SectionHeader title="Contact"/>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
                 {place.phone && (
                   <a
@@ -384,7 +493,7 @@ export default function PlaceInfoPage() {
           {/* Reservation CTA */}
           {place.reservation_url && (
             <>
-              <SectionHeader number={nextSection()} title="Reserve"/>
+              <SectionHeader title="Reserve"/>
               <a
                 href={place.reservation_url}
                 target="_blank"
@@ -407,7 +516,7 @@ export default function PlaceInfoPage() {
           {/* Website link */}
           {place.website && (
             <>
-              <SectionHeader number={nextSection()} title="More info"/>
+              <SectionHeader title="More info"/>
               <a
                 href={place.website}
                 target="_blank"

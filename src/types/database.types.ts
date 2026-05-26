@@ -62,6 +62,7 @@ export interface Database {
           opening_hours: Json | null;
           website: string | null;
           pricing_info: string | null;
+          pricing_items: Json | null;
           phone: string | null;
           email: string | null;
           reservation_url: string | null;
@@ -84,6 +85,7 @@ export interface Database {
           opening_hours?: Json | null;
           website?: string | null;
           pricing_info?: string | null;
+          pricing_items?: Json | null;
           phone?: string | null;
           email?: string | null;
           reservation_url?: string | null;
@@ -106,6 +108,7 @@ export interface Database {
           opening_hours?: Json | null;
           website?: string | null;
           pricing_info?: string | null;
+          pricing_items?: Json | null;
           phone?: string | null;
           email?: string | null;
           reservation_url?: string | null;

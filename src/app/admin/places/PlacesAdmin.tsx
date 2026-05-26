@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import type { Place } from "@/types/database.types";
+import type { Place, Json } from "@/types/database.types";
 import LocationPicker from "./LocationPicker";
 import ImageUploader from "./ImageUploader";
 
@@ -19,7 +19,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Plus, Pencil, Trash2, Search, LogOut, ChevronUp, ChevronDown, Loader2, MapPin,
+  Plus, Pencil, Trash2, Search, LogOut, ChevronUp, ChevronDown, Loader2, MapPin, X,
 } from "lucide-react";
 
 // ── Constants ────────────────────────────────────────────────
@@ -51,6 +51,12 @@ const DAY_LABEL_FI: Record<DayKey, string> = {
 
 type DayHoursInput = { open: string; close: string; closed: boolean };
 
+type PricingRow = {
+  label:     string;
+  price_eur: string;   // empty = free
+  is_free:   boolean;
+};
+
 type PlaceForm = {
   name: string;
   category: string;
@@ -59,12 +65,12 @@ type PlaceForm = {
   address: string;
   description: string;
   price_level: string;
-  rating: string;      // 0–5, optional
-  tags: string;        // comma-separated
+  rating: string;           // 0–5, optional
+  tags: string;             // comma-separated
   image_url: string;
   website: string;
-  // New optional fields
-  pricing_info: string;
+  // Structured pricing (replaces old free-text pricing_info in UI)
+  pricing_items: PricingRow[];
   phone: string;
   email: string;
   reservation_url: string;
@@ -85,7 +91,8 @@ const EMPTY_FORM: PlaceForm = {
   name: "", category: "food", lat: "", lng: "",
   address: "", description: "", price_level: "2", rating: "",
   tags: "", image_url: "", website: "",
-  pricing_info: "", phone: "", email: "", reservation_url: "",
+  pricing_items: [],
+  phone: "", email: "", reservation_url: "",
   hours: structuredClone(EMPTY_HOURS),
 };
 
@@ -116,6 +123,27 @@ function hoursToJson(hours: Record<DayKey, DayHoursInput>): Record<string, { ope
   return Object.keys(out).length > 0 ? out : null;
 }
 
+function parsePricingRows(raw: unknown): PricingRow[] {
+  if (!Array.isArray(raw)) return [];
+  return (raw as Array<Record<string, unknown>>)
+    .filter(r => typeof r.label === "string" && r.label.trim() !== "")
+    .map(r => ({
+      label:     String(r.label),
+      price_eur: r.price_eur != null ? String(r.price_eur) : "",
+      is_free:   r.price_eur === null || r.price_eur === undefined,
+    }));
+}
+
+function pricingRowsToJson(rows: PricingRow[]): Json {
+  const out = rows
+    .filter(r => r.label.trim())
+    .map(r => ({
+      label:     r.label.trim(),
+      price_eur: r.is_free ? null : (parseFloat(r.price_eur) || null),
+    })) as Json[];
+  return out.length > 0 ? out : null;
+}
+
 function placeToForm(p: Place): PlaceForm {
   return {
     name:            p.name,
@@ -129,7 +157,7 @@ function placeToForm(p: Place): PlaceForm {
     tags:            (p.tags as string[]).join(", "),
     image_url:       p.image_url ?? "",
     website:         p.website ?? "",
-    pricing_info:    p.pricing_info ?? "",
+    pricing_items:   parsePricingRows(p.pricing_items),
     phone:           p.phone ?? "",
     email:           p.email ?? "",
     reservation_url: p.reservation_url ?? "",
@@ -280,7 +308,7 @@ export default function PlacesAdmin({
       tags:            form.tags.split(",").map(t => t.trim()).filter(Boolean),
       image_url:       form.image_url.trim() || null,
       website:         form.website.trim() || null,
-      pricing_info:    form.pricing_info.trim() || null,
+      pricing_items:   pricingRowsToJson(form.pricing_items),
       phone:           form.phone.trim() || null,
       email:           form.email.trim() || null,
       reservation_url: form.reservation_url.trim() || null,
@@ -673,16 +701,89 @@ export default function PlacesAdmin({
               </h3>
             </div>
 
-            {/* Pricing info (free text) */}
+            {/* Structured pricing rows */}
             <div className="sm:col-span-2 flex flex-col gap-1.5">
-              <FieldLabel>Hinnasto-teksti</FieldLabel>
-              <Textarea
-                value={form.pricing_info}
-                onChange={e => setField("pricing_info", e.target.value)}
-                placeholder="Lounaat 12–18 €, Sisäänpääsy 16 € / lapset 8 €"
-                className="resize-none"
-                rows={2}
-              />
+              <div className="flex items-center justify-between">
+                <FieldLabel>Hinnasto</FieldLabel>
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({
+                    ...f,
+                    pricing_items: [...f.pricing_items, { label: "", price_eur: "", is_free: false }],
+                  }))}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Plus className="size-3.5"/>
+                  Lisää rivi
+                </button>
+              </div>
+
+              {form.pricing_items.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-input p-3 text-center text-xs text-muted-foreground">
+                  Ei hintatietoja. Paina &ldquo;Lisää rivi&rdquo; aloittaaksesi.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5 rounded-lg border border-input bg-muted/20 p-2">
+                  {/* Header row */}
+                  <div className="flex items-center gap-2 px-1 pb-0.5">
+                    <span className="flex-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Lipputyyppi / kuvaus</span>
+                    <span className="w-20 text-[10px] font-medium text-muted-foreground uppercase tracking-wider text-right">Hinta €</span>
+                    <span className="w-16 text-[10px] font-medium text-muted-foreground uppercase tracking-wider text-center">Ilmainen</span>
+                    <span className="w-7"/>
+                  </div>
+
+                  {form.pricing_items.map((row, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input
+                        value={row.label}
+                        onChange={e => setForm(f => {
+                          const items = [...f.pricing_items];
+                          items[idx] = { ...items[idx]!, label: e.target.value };
+                          return { ...f, pricing_items: items };
+                        })}
+                        placeholder="Aikuinen / Opiskelija / Lapsi…"
+                        className="flex-1 h-8 text-sm"
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={row.is_free ? "" : row.price_eur}
+                        disabled={row.is_free}
+                        onChange={e => setForm(f => {
+                          const items = [...f.pricing_items];
+                          items[idx] = { ...items[idx]!, price_eur: e.target.value };
+                          return { ...f, pricing_items: items };
+                        })}
+                        placeholder="0.00"
+                        className="w-20 h-8 text-sm text-right"
+                      />
+                      <div className="w-16 flex justify-center">
+                        <input
+                          type="checkbox"
+                          checked={row.is_free}
+                          onChange={e => setForm(f => {
+                            const items = [...f.pricing_items];
+                            items[idx] = { ...items[idx]!, is_free: e.target.checked, price_eur: "" };
+                            return { ...f, pricing_items: items };
+                          })}
+                          className="size-4 cursor-pointer"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setForm(f => ({
+                          ...f,
+                          pricing_items: f.pricing_items.filter((_, i) => i !== idx),
+                        }))}
+                        className="w-7 h-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        <X className="size-3.5"/>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Phone */}
