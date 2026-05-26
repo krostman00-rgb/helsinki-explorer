@@ -208,7 +208,7 @@ export default function MePage() {
   const tenure  = stats ? yearsMonths(stats.memberSince) : "exploring Helsinki";
 
   return (
-    <div style={{ background: "#F4EFE5", minHeight: "calc(100dvh - 68px)", overflowY: "auto", paddingBottom: 40 }}>
+    <div className="hh-page-enter" style={{ background: "#F4EFE5", minHeight: "calc(100dvh - 68px)", overflowY: "auto", paddingBottom: 40 }}>
 
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 20px 16px" }}>

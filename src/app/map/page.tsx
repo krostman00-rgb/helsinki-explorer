@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
-  Search, List, Map as MapIcon,
   Coffee, Utensils, Flame, Landmark, TreePine, Building2, Gem, Moon, ShoppingBag, Users, History, CalendarDays,
   Star, MapPin, X, CheckCircle2, LocateFixed,
 } from "lucide-react";
@@ -87,7 +86,7 @@ export default function MapPage() {
   const [days, setDays]           = useState<DayWithActivities[]>([]);
   const [dayIdx, setDayIdx]       = useState(0);
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [view, setView]           = useState<"map" | "list">("map");
+  // view state removed — always map
   const [isLoading, setLoading]   = useState(true);
 
   const [allPlaces, setAllPlaces]         = useState<MapPlace[]>([]);
@@ -253,7 +252,7 @@ export default function MapPage() {
   const stopCount  = validActivities.length;
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "calc(100dvh - 68px)", overflow: "hidden" }}>
+    <div className="hh-page-enter" style={{ position: "relative", width: "100%", height: "calc(100dvh - 68px)", overflow: "hidden" }}>
 
       {/* ── Toast notification ── */}
       {toast && (
@@ -263,100 +262,58 @@ export default function MapPage() {
       )}
 
       {/* ── Full-screen map ── */}
-      {view === "map" && (
-        <div style={{ position: "absolute", inset: 0 }}>
-          <TripMapView
-            ref={mapViewRef}
-            activities={mapActivities}
-            selectedIdx={selectedIdx}
-            onMarkerClick={handleMarkerClick}
-            accommodation={accommodation}
-            userLocation={userLocation}
-          />
-        </div>
-      )}
+      <div style={{ position: "absolute", inset: 0 }}>
+        <TripMapView
+          ref={mapViewRef}
+          activities={mapActivities}
+          selectedIdx={selectedIdx}
+          onMarkerClick={handleMarkerClick}
+          accommodation={accommodation}
+          userLocation={userLocation}
+        />
+      </div>
 
-      {/* ── List view ── */}
-      {view === "list" && (
-        <div style={{ position: "absolute", inset: 0, background: "var(--hh-linen-100)", overflowY: "auto", padding: "16px 20px 200px" }}>
-          {/* Category filter row */}
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", marginBottom: 16, paddingBottom: 4 }}>
-            {FILTER_CATEGORIES.map(({ k, label }) => (
-              <button key={k} onClick={() => setFilterCat(k)} style={{ flex: "0 0 auto", height: 30, padding: "0 14px", borderRadius: 999, border: "none", background: filterCat === k ? "var(--hh-ink-900)" : "var(--hh-linen-200)", fontFamily: "var(--font-geist-sans)", fontSize: 12, fontWeight: 500, color: filterCat === k ? "#FAF7F1" : "var(--hh-stone-500)", cursor: "pointer" }}>
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Trip activities section */}
-          {trip && validActivities.length > 0 && (
-            <>
-              <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "var(--hh-stone-400)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8 }}>Your trip · Day {dayNumber}</div>
-              {validActivities.map((act, i) => {
-                const cat  = act.places?.category ?? "";
-                const Icon = CATEGORY_ICON[cat] ?? Gem;
-                const color = CATEGORY_COLOR[cat] ?? "#B5A992";
-                const active = i === selectedIdx;
-                return (
-                  <button key={act.id} onClick={() => { setSelectedIdx(i); setView("map"); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", marginBottom: 8, borderRadius: 16, background: active ? "var(--hh-ink-900)" : "var(--hh-linen-50)", border: `0.5px solid ${active ? "transparent" : "var(--hh-linen-300)"}`, cursor: "pointer", textAlign: "left" }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: active ? "rgba(250,247,241,0.12)" : "var(--hh-linen-200)", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
-                      <Icon size={16} color={active ? "#FAF7F1" : color} strokeWidth={1.5}/>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 17, lineHeight: 1.1, color: active ? "#FAF7F1" : "var(--hh-ink-900)", marginBottom: 2 }}>{act.places?.name ?? "—"}</div>
-                      <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: active ? "rgba(250,247,241,0.55)" : "var(--hh-stone-400)", letterSpacing: "0.1em", textTransform: "uppercase" }}>{cat}</div>
-                    </div>
-                    <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: active ? "rgba(250,247,241,0.4)" : "var(--hh-stone-400)", fontWeight: 600 }}>{pad2(i + 1)}</div>
-                  </button>
-                );
-              })}
-              <div style={{ height: 1, background: "var(--hh-linen-300)", margin: "16px 0" }}/>
-            </>
-          )}
-
-          {/* All places section */}
-          <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "var(--hh-stone-400)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8 }}>Explore Helsinki · {filteredPlaces.length} places</div>
-          {filteredPlaces.map(place => {
-            const Icon  = CATEGORY_ICON[place.category] ?? Gem;
-            const color = CATEGORY_COLOR[place.category] ?? "#B5A992";
-            const active = place.id === selectedPlace?.id;
-            return (
-              <button key={place.id} onClick={() => { setSelectedPlace(place); setView("map"); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", marginBottom: 8, borderRadius: 16, background: active ? "var(--hh-ink-900)" : "var(--hh-linen-50)", border: `0.5px solid ${active ? "transparent" : "var(--hh-linen-300)"}`, cursor: "pointer", textAlign: "left" }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: active ? "rgba(250,247,241,0.12)" : "var(--hh-linen-200)", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
-                  <Icon size={16} color={active ? "#FAF7F1" : color} strokeWidth={1.5}/>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", fontSize: 17, lineHeight: 1.1, color: active ? "#FAF7F1" : "var(--hh-ink-900)", marginBottom: 2 }}>{place.name}</div>
-                  <div style={{ fontFamily: "var(--font-geist-sans)", fontSize: 12, color: active ? "rgba(250,247,241,0.65)" : "var(--hh-stone-400)", lineHeight: 1.4 }}>{place.address}</div>
-                </div>
-                {place.rating && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontFamily: "var(--font-geist-mono)", fontSize: 11, color: active ? "rgba(250,247,241,0.6)" : "var(--hh-stone-400)" }}>
-                    <Star size={10} strokeWidth={1.5}/>{place.rating}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── Top bar ── */}
+      {/* ── Top bar — day switcher (left) + GPS (right) ── */}
       <div style={{ position: "absolute", top: 16, left: 16, right: 16, zIndex: 20, display: "flex", gap: 8, alignItems: "center" }}>
-        <div style={{ flex: 1, height: 44, borderRadius: 999, background: "rgba(250,247,241,0.92)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", border: "0.5px solid rgba(180,165,145,0.4)", boxShadow: "0 2px 16px rgba(26,22,17,0.12)", display: "flex", alignItems: "center", gap: 10, padding: "0 16px" }}>
-          <Search size={15} color="var(--hh-stone-400)" strokeWidth={1.8}/>
-          <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 13.5, color: "var(--hh-stone-400)" }}>Search places…</span>
-        </div>
-        <div style={{ display: "flex", borderRadius: 999, background: "rgba(250,247,241,0.92)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", border: "0.5px solid rgba(180,165,145,0.4)", boxShadow: "0 2px 16px rgba(26,22,17,0.12)", overflow: "hidden" }}>
-          {(["map", "list"] as const).map(v => {
-            const active = view === v;
-            const Icon = v === "map" ? MapIcon : List;
-            return (
-              <button key={v} onClick={() => setView(v)} style={{ width: 44, height: 44, border: "none", background: active ? "var(--hh-ink-900)" : "transparent", display: "grid", placeItems: "center", cursor: "pointer", transition: "background 0.15s" }}>
-                <Icon size={16} color={active ? "#FAF7F1" : "var(--hh-stone-500)"} strokeWidth={1.8}/>
-              </button>
-            );
-          })}
-        </div>
+
+        {/* Day switcher — left side */}
+        {trip && days.length > 0 ? (
+          <div style={{ flex: 1, display: "flex", gap: 5, alignItems: "center", flexWrap: "nowrap", overflow: "hidden" }}>
+            {days.length === 1 ? (
+              /* Single day: show context pill */
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 44, padding: "0 16px", borderRadius: 999, background: "rgba(250,247,241,0.94)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", border: "0.5px solid rgba(180,165,145,0.4)", boxShadow: "0 2px 16px rgba(26,22,17,0.10)" }}>
+                <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10.5, color: "#4A3F33", letterSpacing: "0.08em" }}>
+                  {dayName.toUpperCase()} · {pad2(stopCount)} stops
+                </span>
+              </div>
+            ) : (
+              /* Multi-day: show D01 D02… buttons */
+              days.map((d, i) => (
+                <button
+                  key={d.id}
+                  onClick={() => { setDayIdx(i); setSelectedIdx(0); setSelectedPlace(null); }}
+                  style={{
+                    height: 44, padding: "0 14px", borderRadius: 999, border: "none",
+                    background: i === dayIdx ? "var(--hh-ink-900)" : "rgba(250,247,241,0.94)",
+                    backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                    boxShadow: "0 2px 16px rgba(26,22,17,0.10)",
+                    cursor: "pointer",
+                    fontFamily: "var(--font-geist-mono)", fontSize: 11,
+                    color: i === dayIdx ? "#FAF7F1" : "#4A3F33",
+                    letterSpacing: "0.08em",
+                    transition: "background 0.18s, color 0.18s",
+                    flex: "0 0 auto",
+                  }}
+                >
+                  D{pad2(d.day_number)}
+                </button>
+              ))
+            )}
+          </div>
+        ) : (
+          <div style={{ flex: 1 }}/>
+        )}
+
         {/* GPS locate button */}
         <button
           onClick={() => {
@@ -365,7 +322,6 @@ export default function MapPage() {
               setTimeout(() => setToast(null), 3000);
               return;
             }
-            // Stop any in-flight watch
             if (watchIdRef.current !== null) {
               navigator.geolocation.clearWatch(watchIdRef.current);
               watchIdRef.current = null;
@@ -374,10 +330,7 @@ export default function MapPage() {
               clearTimeout(watchTimerRef.current);
               watchTimerRef.current = null;
             }
-
             setLocating(true);
-
-            // Track the best (lowest accuracy = most precise) fix we've seen
             let best: { lat: number; lng: number; accuracy: number } | null = null;
 
             const finish = (reason: "accurate" | "timeout" | "error", errMsg?: string) => {
@@ -390,49 +343,27 @@ export default function MapPage() {
                 watchTimerRef.current = null;
               }
               setLocating(false);
-
               if (reason === "error") {
                 setToast(errMsg ?? "Sijainnin haku epäonnistui");
                 setTimeout(() => setToast(null), 4000);
                 return;
               }
-              if (!best) {
-                setToast("Sijaintia ei voitu määrittää");
-                setTimeout(() => setToast(null), 4000);
-                return;
+              if (best) {
+                setUserLocation({ lat: best.lat, lng: best.lng });
+                mapViewRef.current?.flyToLocation(best.lat, best.lng, 15.5);
               }
-              // Commit best fix and fly map IMPERATIVELY (next frame, after effects)
-              setUserLocation({ lat: best.lat, lng: best.lng });
-              mapViewRef.current?.flyToLocation(best.lat, best.lng, 15.5);
-              const accStr = best.accuracy < 1000
-                ? `± ${Math.round(best.accuracy)} m`
-                : `± ${(best.accuracy / 1000).toFixed(1)} km`;
-              const prefix = reason === "accurate" ? "📍 Sijainti löydetty" : "📍 Paras saatu";
-              setToast(`${prefix} · ${accStr}`);
-              setTimeout(() => setToast(null), 3500);
+              // No toast on success — the map flying is enough feedback
             };
 
-            // 12-second hard cap — accept best fix even if accuracy never gets great
             watchTimerRef.current = setTimeout(() => finish("timeout"), 12000);
-
             watchIdRef.current = navigator.geolocation.watchPosition(
               (pos) => {
                 const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-
-                // Keep the most precise reading
                 if (!best || accuracy < best.accuracy) {
                   best = { lat, lng, accuracy };
-                  // Live update — show progress to user
                   setUserLocation({ lat, lng });
                   mapViewRef.current?.flyToLocation(lat, lng, 15.5);
                 }
-
-                const accStr = accuracy < 1000
-                  ? `± ${Math.round(accuracy)} m`
-                  : `± ${(accuracy / 1000).toFixed(1)} km`;
-                setToast(`📍 ${accStr} — tarkennetaan…`);
-
-                // GPS-level accuracy reached — done
                 if (accuracy <= 100) finish("accurate");
               },
               (err) => {
@@ -446,62 +377,31 @@ export default function MapPage() {
             );
           }}
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: 999,
-            background: userLocation ? "var(--hh-ink-900)" : "rgba(250,247,241,0.92)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            border: "0.5px solid rgba(180,165,145,0.4)",
-            boxShadow: "0 2px 16px rgba(26,22,17,0.16)",
-            display: "grid",
-            placeItems: "center",
-            cursor: "pointer",
+            width: 44, height: 44, borderRadius: 999, border: "none",
+            background: userLocation ? "var(--hh-ink-900)" : "#FAF7F1",
+            boxShadow: "0 2px 16px rgba(26,22,17,0.18)",
+            display: "grid", placeItems: "center", cursor: "pointer",
             flex: "0 0 auto",
-            opacity: locating ? 0.5 : 1,
+            opacity: locating ? 0.6 : 1,
             transition: "opacity 0.2s, background 0.2s",
           }}
           aria-label="Locate me"
         >
-          <LocateFixed size={18} color={userLocation ? "#FAF7F1" : "var(--hh-stone-600)"} strokeWidth={1.8}/>
+          <LocateFixed size={18} color={userLocation ? "#FAF7F1" : "#4A3F33"} strokeWidth={1.8}/>
         </button>
       </div>
 
-      {/* ── Category filter chips (map view) ── */}
-      {view === "map" && (
-        <div style={{ position: "absolute", top: 72, left: 0, right: 0, zIndex: 20, display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "0 16px" }}>
-          {FILTER_CATEGORIES.map(({ k, label }) => (
-            <button key={k} onClick={() => setFilterCat(k)} style={{ flex: "0 0 auto", height: 28, padding: "0 12px", borderRadius: 999, border: "none", background: filterCat === k ? "var(--hh-ink-900)" : "rgba(250,247,241,0.88)", backdropFilter: "blur(8px)", fontFamily: "var(--font-geist-sans)", fontSize: 12, fontWeight: filterCat === k ? 600 : 400, color: filterCat === k ? "#FAF7F1" : "var(--hh-stone-600)", cursor: "pointer", boxShadow: "0 1px 8px rgba(26,22,17,0.10)" }}>
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ── Trip day context pill ── */}
-      {trip && view === "map" && (
-        <div style={{ position: "absolute", top: 112, left: 16, zIndex: 20 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 32, padding: "0 14px", borderRadius: 999, background: "rgba(26,22,17,0.82)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "0.5px solid rgba(250,247,241,0.12)" }}>
-            <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, color: "rgba(250,247,241,0.9)", letterSpacing: "0.1em" }}>
-              {dayName.toUpperCase()} · Day {dayNumber} · {pad2(stopCount)} stops
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* ── Day switcher ── */}
-      {trip && days.length > 1 && view === "map" && (
-        <div style={{ position: "absolute", top: trip ? 152 : 112, left: 16, zIndex: 20, display: "flex", gap: 6 }}>
-          {days.map((d, i) => (
-            <button key={d.id} onClick={() => { setDayIdx(i); setSelectedIdx(0); setSelectedPlace(null); }} style={{ height: 26, padding: "0 10px", borderRadius: 999, border: "none", background: i === dayIdx ? "var(--hh-copper-600)" : "rgba(250,247,241,0.82)", backdropFilter: "blur(8px)", cursor: "pointer", fontFamily: "var(--font-geist-mono)", fontSize: 9.5, color: i === dayIdx ? "#FAF7F1" : "var(--hh-stone-500)", letterSpacing: "0.08em" }}>
-              D{pad2(d.day_number)}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* ── Category filter chips ── */}
+      <div style={{ position: "absolute", top: 72, left: 0, right: 0, zIndex: 20, display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "0 16px" }}>
+        {FILTER_CATEGORIES.map(({ k, label }) => (
+          <button key={k} onClick={() => setFilterCat(k)} style={{ flex: "0 0 auto", height: 28, padding: "0 12px", borderRadius: 999, border: "none", background: filterCat === k ? "var(--hh-ink-900)" : "rgba(250,247,241,0.88)", backdropFilter: "blur(8px)", fontFamily: "var(--font-geist-sans)", fontSize: 12, fontWeight: filterCat === k ? 600 : 400, color: filterCat === k ? "#FAF7F1" : "var(--hh-stone-600)", cursor: "pointer", boxShadow: "0 1px 8px rgba(26,22,17,0.10)" }}>
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* ── Bottom: selected place info card ── */}
-      {selectedPlace && view === "map" && (
+      {selectedPlace && (
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20, padding: "0 16px 20px", background: "var(--hh-linen-100)", borderTop: "0.5px solid var(--hh-linen-300)" }}>
           <div style={{ background: "var(--hh-linen-50)", borderRadius: 20, border: "0.5px solid var(--hh-linen-300)", boxShadow: "0 2px 12px rgba(26,22,17,0.08)", padding: "16px 16px 18px", position: "relative", marginTop: 12 }}>
             <button onClick={() => setSelectedPlace(null)} style={{ position: "absolute", top: 14, right: 14, width: 28, height: 28, borderRadius: 999, background: "var(--hh-linen-200)", border: "none", display: "grid", placeItems: "center", cursor: "pointer" }}>
@@ -543,7 +443,7 @@ export default function MapPage() {
       )}
 
       {/* ── Bottom: trip activity cards ── */}
-      {!selectedPlace && trip && view === "map" && (
+      {!selectedPlace && trip && (
         <div style={{ position: "absolute", bottom: 20, left: 0, right: 0, zIndex: 20 }}>
           <div ref={cardsRef} style={{ display: "flex", alignItems: "center", gap: 0, overflowX: "auto", padding: "0 20px", scrollbarWidth: "none", scrollSnapType: "x mandatory" }}>
             {validActivities.map((act, i) => {
@@ -598,7 +498,7 @@ export default function MapPage() {
       )}
 
       {/* ── Bottom: no trip CTA ── */}
-      {!trip && !selectedPlace && view === "map" && (
+      {!trip && !selectedPlace && (
         <div style={{ position: "absolute", bottom: 20, left: 16, right: 16, zIndex: 20 }}>
           <div style={{ background: "rgba(250,247,241,0.94)", backdropFilter: "blur(12px)", borderRadius: 20, border: "0.5px solid rgba(180,165,145,0.3)", boxShadow: "0 4px 20px rgba(26,22,17,0.12)", padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>

@@ -257,7 +257,7 @@ export default function PassportPage() {
     .sort((a, b) => b.ratio - a.ratio)[0] ?? null;
 
   return (
-    <div style={{ background: "#F0EDE6", minHeight: "calc(100dvh - 68px)", overflowY: "auto", paddingBottom: 32 }}>
+    <div className="hh-page-enter" style={{ background: "#F0EDE6", minHeight: "calc(100dvh - 68px)", overflowY: "auto", paddingBottom: 32 }}>
 
       {/* ── Header ── */}
       <div style={{ padding: "20px 20px 0" }}>

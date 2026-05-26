@@ -1,30 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const HIDDEN_ON = ["/", "/onboarding", "/discover"];
 
+// Lucide Luggage path (inline SVG to avoid extra bundle hit)
+function LuggageIcon({ active }: { active: boolean }) {
+  const w = active ? 2 : 1.5;
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <rect x="5" y="9" width="14" height="13" rx="2" stroke="currentColor" strokeWidth={w}/>
+      <path d="M9 9V6a3 3 0 016 0v3" stroke="currentColor" strokeWidth={w} strokeLinecap="round"/>
+      <line x1="12" y1="13" x2="12" y2="18" stroke="currentColor" strokeWidth={w} strokeLinecap="round"/>
+      <line x1="9" y1="15.5" x2="15" y2="15.5" stroke="currentColor" strokeWidth={w} strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 const NAV_ITEMS = [
   {
-    href: "/",
-    label: "Home",
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <path d="M3 9.5L11 3l8 6.5V19a1 1 0 01-1 1H14v-5h-4v5H4a1 1 0 01-1-1V9.5z"
-          stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-  },
-  {
     href: "/trips",
-    label: "List",
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <path d="M4 6h14M4 11h14M4 16h8"
-          stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round"/>
-      </svg>
-    ),
+    label: "Trips",
+    icon: (active: boolean) => <LuggageIcon active={active}/>,
   },
   {
     href: "/map",
@@ -62,6 +61,12 @@ const NAV_ITEMS = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const router   = useRouter();
+
+  // Prefetch all nav destinations on mount so tab switches are instant
+  useEffect(() => {
+    NAV_ITEMS.forEach(item => router.prefetch(item.href));
+  }, [router]);
 
   if (HIDDEN_ON.includes(pathname)) return null;
 
@@ -74,19 +79,28 @@ export function BottomNav() {
     }}>
       <ul style={{ display: "flex", height: 68, alignItems: "stretch", margin: 0, padding: 0, listStyle: "none" }}>
         {NAV_ITEMS.map(({ href, label, icon }) => {
-          const isActive = pathname === href || (href !== "/" && pathname.startsWith(href));
+          const isActive = pathname === href || pathname.startsWith(href);
           return (
             <li key={label} style={{ flex: 1, display: "flex" }}>
               <Link
                 href={href}
-                style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, textDecoration: "none", color: isActive ? "var(--hh-ink-900)" : "var(--hh-stone-500)", transition: "color 0.15s", position: "relative" }}
+                prefetch
+                style={{
+                  flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+                  justifyContent: "center", gap: 3, textDecoration: "none",
+                  color: isActive ? "var(--hh-ink-900)" : "var(--hh-stone-500)",
+                  transition: "color 0.18s ease",
+                  position: "relative",
+                }}
               >
-                {icon(isActive)}
-                <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 10, fontWeight: isActive ? 500 : 400, letterSpacing: "0.04em" }}>
+                <span style={{ transition: "transform 0.18s ease", transform: isActive ? "scale(1)" : "scale(0.92)" }}>
+                  {icon(isActive)}
+                </span>
+                <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 10, fontWeight: isActive ? 500 : 400, letterSpacing: "0.04em", transition: "opacity 0.18s ease", opacity: isActive ? 1 : 0.7 }}>
                   {label}
                 </span>
                 {isActive && (
-                  <span style={{ position: "absolute", bottom: 6, width: 4, height: 4, borderRadius: "50%", background: "#C96E48" }}/>
+                  <span style={{ position: "absolute", bottom: 6, width: 4, height: 4, borderRadius: "50%", background: "#C96E48", animation: "hh-dot-pop 0.25s cubic-bezier(0.34,1.56,0.64,1) both" }}/>
                 )}
               </Link>
             </li>

@@ -158,7 +158,7 @@ export default function TripsPage() {
   }
 
   return (
-    <div style={{ background: "var(--hh-linen-100)", minHeight: "calc(100dvh - 68px)", padding: "48px 20px 40px" }}>
+    <div className="hh-page-enter" style={{ background: "var(--hh-linen-100)", minHeight: "calc(100dvh - 68px)", padding: "48px 20px 40px" }}>
       {/* header */}
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 28 }}>
         <div>

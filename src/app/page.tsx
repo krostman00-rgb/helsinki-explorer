@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 // HelloHel wordmark — circle + dot + "hello·hel"
 function HhMark({ color = "currentColor" }: { color?: string }) {
@@ -16,6 +21,22 @@ function HhMark({ color = "currentColor" }: { color?: string }) {
 }
 
 export default function WelcomePage() {
+  const router = useRouter();
+
+  // If the user already has trips, skip straight to /trips
+  useEffect(() => {
+    (async () => {
+      const sb = createClient();
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) return;
+      const { count } = await sb
+        .from("trips")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      if (count && count > 0) router.replace("/trips");
+    })();
+  }, [router]);
+
   return (
     <div style={{ width: "100%", height: "calc(100dvh - 0px)", position: "relative", overflow: "hidden", background: "#F4EFE5" }}>
       {/* Full-bleed hero — Helsinki Cathedral alley, golden hour */}
