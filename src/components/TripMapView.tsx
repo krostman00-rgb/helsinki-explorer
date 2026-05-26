@@ -220,7 +220,12 @@ export const TripMapView = forwardRef<TripMapViewHandle, TripMapViewProps>(funct
             attribution: "© OpenStreetMap contributors © CARTO",
           },
         },
-        layers: [{ id: "bg", type: "raster", source: "carto" }],
+        // Background layer fills the canvas with the linen cream colour BEFORE
+        // any tiles load — kills the white-flash users see while tiles fetch.
+        layers: [
+          { id: "bg-cream", type: "background", paint: { "background-color": "#EDE8DC" } },
+          { id: "bg",       type: "raster",     source: "carto" },
+        ],
       },
       center: [24.9354, 60.1650],
       zoom: 11.5,

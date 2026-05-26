@@ -256,8 +256,9 @@ export default function MapPage() {
         </div>
       )}
 
-      {/* ── Full-screen map ── */}
-      <div style={{ position: "absolute", inset: 0 }}>
+      {/* ── Full-screen map (cream backdrop hides the white flash during
+            map JS load + tile fetch) ── */}
+      <div style={{ position: "absolute", inset: 0, background: "#EDE8DC" }}>
         <TripMapView
           ref={mapViewRef}
           activities={mapActivities}

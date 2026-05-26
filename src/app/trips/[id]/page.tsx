@@ -617,9 +617,31 @@ export default function TripDetailPage() {
     if (completed) checkAchievements(updated);
   }, [checkAchievements]);
 
+  // Skeleton shell while loading — no blocking spinner
   if (isLoading) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100dvh - 68px)", background: "var(--hh-linen-100)" }}>
-      <div style={{ fontFamily: "var(--font-geist-mono)", fontSize: 12, color: "var(--hh-stone-500)", letterSpacing: "0.1em" }}>Loading…</div>
+    <div className="hh-page-enter" style={{ background: "var(--hh-linen-100)", minHeight: "calc(100dvh - 68px)" }}>
+      {/* Header skeleton */}
+      <div style={{ padding: "52px 20px 20px", background: "var(--hh-linen-50)", borderBottom: "0.5px solid var(--hh-linen-300)" }}>
+        <span className="hh-skeleton" style={{ display: "inline-block", height: 12, width: 60, marginBottom: 10 }}>back</span>
+        <div style={{ marginBottom: 4 }}>
+          <span className="hh-skeleton" style={{ display: "inline-block", height: 10, width: 200 }}>trip · Day 1 / 3</span>
+        </div>
+        <div style={{ marginBottom: 22 }}>
+          <span className="hh-skeleton" style={{ display: "inline-block", height: 38, width: 220 }}>Wednesday.</span>
+        </div>
+        {/* Day switcher skeleton */}
+        <div style={{ display: "flex", gap: 8, padding: "0 0 14px" }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} className="hh-skeleton" style={{ flex: "0 0 auto", width: 70, height: 78, borderRadius: 16 }}/>
+          ))}
+        </div>
+      </div>
+      {/* Activity card skeletons */}
+      <div style={{ padding: "16px 16px 100px", display: "flex", flexDirection: "column", gap: 12 }}>
+        {[0, 1, 2].map(i => (
+          <div key={i} className="hh-skeleton" style={{ height: 124, borderRadius: 18, animationDelay: `${i * 0.08}s` }}/>
+        ))}
+      </div>
     </div>
   );
 
@@ -640,7 +662,7 @@ export default function TripDetailPage() {
   dayDate.setDate(today.getDate() + activeDayIdx);
 
   return (
-    <div style={{ background: "var(--hh-linen-100)", minHeight: "calc(100dvh - 68px)" }}>
+    <div className="hh-page-enter" style={{ background: "var(--hh-linen-100)", minHeight: "calc(100dvh - 68px)" }}>
 
       {/* Header */}
       <div style={{ padding: "52px 20px 0", background: "var(--hh-linen-50)", borderBottom: "0.5px solid var(--hh-linen-300)" }}>
